@@ -1,5 +1,5 @@
-# input : STUDY_ID and server location
-# output : a trackhub here: http://www.ebi.ac.uk/~tapanari/
+# input : STUDY_ID server_directory_path server_url
+# output : a trackhub (bunch of directories and files) on your server
 
 # how to call it:
 # perl create_track_hub_pipeline.pl SRP036860 /homes/tapanari/public_html/data/test http://www.ebi.ac.uk/~tapanari/data/test

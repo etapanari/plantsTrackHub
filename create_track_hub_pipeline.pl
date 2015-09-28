@@ -1,21 +1,51 @@
-# input : STUDY_ID 
+# input : STUDY_ID and server location
 # output : a trackhub here: http://www.ebi.ac.uk/~tapanari/
 
 # how to call it:
-# perl create_track_hub_pipeline.pl SRP036860 /nfs/panda/ensemblgenomes/development/tapanari/trackHub_stuff  /homes/tapanari/public_html  http://www.ebi.ac.uk/~tapanari/
+# perl create_track_hub_pipeline.pl SRP036860 http://plantain:3000/eg/
 
-    use strict ;
-    use warnings;
-    use Data::Dumper;
-    use Bio::EnsEMBL::DBSQL::DBAdaptor;
-    use Bio::EnsEMBL::Registry;
-    use Bio::EnsEMBL::ENA::SRA::BaseSraAdaptor qw(get_adaptor);
+  use strict ;
+  use warnings;
+  use Data::Dumper;
+
+  use HTTP::Tiny;
+  use Time::HiRes;
+  use JSON;
+
+  #Robert's example REST API call response
+  #http://plantain:3000/eg/getLibrariesByOrganism/oryza_sativa
+
+  my $study_id = $ARGV[0];
+  my $server =   $ARGV[1]; # Robert's server where he stores his REST URLs
+
+  my $http = HTTP::Tiny->new();
 
 
-    my $study_id=$ARGV[0];
-    my $full_path_to_store_bam_files=$ARGV[1];
-    my $ftp_dir_full_path=$ARGV[2]; #"/homes/tapanari/public_html";
-    my $url_root=$ARGV[3]; #"http://www.ebi.ac.uk/~tapanari/";
+sub getJsonResponse { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
+
+  my $endpoint = shift; # example endpoint: "getLibrariesByOrganism/oryza_sativa";
+  my $url = $server.$endpoint;
+
+  my $response = $http->get($url);
+
+  if($response->{success} ==1) { # if the response is successful then I get 1
+
+    my $content=$response->{content};      #print $response->{content}."\n"; # it prints whatever is the content of the URL, ie the jason response
+    my $json = decode_json($content); # it returns an array reference 
+
+    return $json;
+
+  }else{
+
+      my ($status, $reason) = ($response->{status}, $response->{reason}); #LWP perl library for dealing with http
+      print "Failed for $endpoint! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200" reason "OK"
+      return 0;
+  }
+
+}
+
+    my $ftp_dir_full_path = "/homes/tapanari/public_html/"; # there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
+    my $url_root = "http://www.ebi.ac.uk/~tapanari/test";
 
     my $registry = 'Bio::EnsEMBL::Registry';
 
@@ -26,66 +56,46 @@
      -db_version => '80',
     );
 
-     #`source /homes/oracle/ora11setup.sh`;
-     `/nfs/ma/home/atlas3-production/sw/atlasinstall_prod/atlasprod/irap/single_lib/db/scripts/findCRAMFiles.sh $study_id >  $study_id.cram.locations`;
 
-# output of the first 2 lines of the above script (Robert's)
-    #study_id	run_id	cram_location	organism	processing_status
-    #ERP004714	ERR424721	ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/ERR424/ERR424721/ERR424721.cram	triticum_aestivum	18-JUN-15	completed
+     my $get_runs_from_study_url="getLibrariesByStudyId/$study_id";
+   
+     my @array_response=@{getJsonResponse($get_runs_from_study_url)}; 
 
-   my %run_id_location;
-   my $species_name;
-
-   open(IN, "$study_id.cram.locations") or die "Can't open $study_id.cram.locations\n";
-       
-        while(<IN>){
-
-           chomp;
-           next if($_=~/^study/); # i skip the label line
-           my @words = split(/\t/, $_);
-
-           my $run_id=$words[1];
-           my $location=$words[2];
-           $species_name=$words[3];
-
-           if($words[5] eq "completed"){
-             $run_id_location{$run_id}=$location;
-           }
-        }
-
-   close(IN);
+     my %assembly_names; #  it stores all distinct assembly names for a given study
+     my %run_id_location # it stores as key the run id and value the location in the ftp server of arrayexpress
 
 
-    my $meta_container = $registry->get_adaptor( $species_name, 'Core', 'MetaContainer' );
+#[{"STUDY_ID":"SRP033494","SAMPLE_ID":"SAMN02434874","RUN_ID":"SRR1042754","ORGANISM":"arabidopsis_thaliana","STATUS":"Complete","ASSEMBLY_USED":"TAIR10","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:11:03",
+#"LAST_PROCESSED_DATE":"Tue Jun 16 2015 15:07:34","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/SRR104/004/SRR1042754/SRR1042754.cram"},
 
-    my $assembly_name = $meta_container->single_value_by_key('assembly.name'); 
+     foreach my $hash_ref (@array_response){
+
+         my %hash = %{$hash_ref};
+
+         if($hash{"STATUS"} eq "Complete") {
+
+            $assembly_names{$hash{"ASSEMBLY_USED"}} = 1; # I store the value of the $hash{"ASSEMBLY_USED"} ie the "TAIR10" as a key in my hash %assembly_names
+            $run_id_location{$hash{"RUN_ID"}}= $hash{"FTP_LOCATION"}; 
+         }
+     }
+
 
     `mkdir $ftp_dir_full_path/$study_id`;
 
-    `mkdir $ftp_dir_full_path/$study_id/$assembly_name`;
+     foreach my $assembly_name (keys %assembly_names){ # For every assembly I make a directory for the study -track hub
 
-
-    foreach my $run_id (keys %run_id_location){
-
-
-      #`wget $run_id_location{$run_id} `; # to download the cram files
-     # make the bam files for each run:
-      `samtools view -T $full_path_to_store_bam_files/$species_name/Physcomitrella_patens.ASM242v1.26.dna.toplevel.fa -b -o  $full_path_to_store_bam_files/$species_name/$run_id.bam $run_id_location{$run_id}`;  # CRAM to BAM
-      `samtools index -b $full_path_to_store_bam_files/$species_name/$run_id.bam` ; # to index the bam (creates bam.bai file) 
-
-     # to create the links to the bam and bam.bai files of each run:
-      `ln -s  $full_path_to_store_bam_files/$species_name/$run_id.bam $ftp_dir_full_path/$study_id/$run_id.bam`;
-      `ln -s  $full_path_to_store_bam_files/$species_name/$run_id.bam.bai $ftp_dir_full_path/$study_id/$run_id.bam.bai`;
-    }
+        `mkdir $ftp_dir_full_path/$study_id/$assembly_name`;
+     }
 
 
 #hub.txt content:
 
-#hub Whole transcriptome sequencing of wheat 3B chromosome  ->study_title
-#shortLabel Whole transcriptome sequencing of wheat 3B chromosome  ->study_title
-#longLabel The project aims to establish a transcriptional map of wheat 3B chromosome, i.e., identify the expressed portions of the chromosome, correlate the expression patterns to the chromosomal localization and to refine the sequence annotation through the validation of gene structure and position ->study_abstract
+#hub SRP036643
+#shortLabel ENA STUDY:SRP036643
+#longLabel DNA methylation variation in Arabidopsis has a genetic basis and appears to be involved in local adaptation, <a href="http://www.ebi.ac.uk/ena/data/view/SRP036643">SRP036643</a>
 #genomesFile genomes.txt
 #email tapanari@ebi.ac.uk
+
 
 
       my $hub_txt_file="$ftp_dir_full_path/$study_id/hub.txt";
@@ -100,8 +110,8 @@
 
 	  open(my $fh, '>', $hub_txt_file) or die "Could not open file '$hub_txt_file' $!";
 
-	  print $fh $study->accession."\n"; 
-	  print $fh "shortLabel hub ENA STUDY: ".$study->accession."\n"; 
+	  print $fh "hub ".$study->accession."\n"; 
+	  print $fh "shortLabel ENA STUDY: ".$study->accession."\n"; 
 	  print $fh "longLabel ".$study->title." ,<a href=\"www.ebi.ac.uk/ena/data/view/".$study->accession."\">".$study->accession."</a>"."\n";
 	  print $fh "genomesFile genomes.txt\n";
 	  print $fh "email tapanari\@ebi.ac.uk\n";
@@ -117,24 +127,31 @@
 
        my $genomes_txt_file="$ftp_dir_full_path/$study_id/genomes.txt";
 
-       `touch $genomes_txt_file`;
+       `touch $genomes_txt_file`; ######################################## I MAKE THE genomes.txt FILE
 
         open(my $fh, '>', $genomes_txt_file) or die "Could not open file '$genomes_txt_file' $!";
 
+
+   foreach my $assembly_name (keys %assembly_names){
+
         print $fh "genome ".$assembly_name."\n"; 
-        print $fh "trackDb ".$assembly_name."/trackDb.txt"."\n"; 
+        print $fh "trackDb ".$assembly_name."/trackDb.txt"."\n\n"; 
+   }
 
 # trackDb.txt content:
 
-#track run_ERR424721
-#bigDataUrl http://www.ebi.ac.uk/~tapanari/ERP004714/ERR424721.bam
-#shortLabel Illumina HiSeq 2000 paired end sequencing; ble HiSeq 2000 Simple ou Paire multiplex , URL: http://www.ebi.ac.uk/ena/data/view/ERR424721
-#longLabel Illumina HiSeq 2000 paired end sequencing; ble HiSeq 2000 Simple ou Paire multiplex , URL: http://www.ebi.ac.uk/ena/data/view/ERR424721
+#track SRR1161753
+#bigDataUrl http://www.ebi.ac.uk/~tapanari/data/SRP036643/SRR1161753.bam
+#shortLabel ENA:SRR1161753
+#longLabel Illumina Genome Analyzer IIx sequencing; GSM1321742: s1061_16C; Arabidopsis thaliana; RNA-Seq; <a href="http://www.ebi.ac.uk/ena/data/view/SRR1161753">SRR1161753</a>
 #type bam
+
+
+   foreach my $assembly_name (keys %assembly_names){
 
        my $trackDb_txt_file="$ftp_dir_full_path/$study_id/$assembly_name/trackDb.txt";
 
-       `touch $trackDb_txt_file`;
+       `touch $trackDb_txt_file`;       ########################################  I MAKE THE trackDb.txt FILE IN EVERY ASSEMBLY FOLDER
 
        foreach my $study (@studies){
 
@@ -142,9 +159,12 @@
 
          for my $run (@{$study->runs()}) {
 
-           print $fh $run->accession()."\n"; 
-           print $fh "bigDataUrl $url_root".$study->accession()."/".$run->accession().".bam"."\n"; 
-           print $fh "shortLabel track ENA RUN: ".$run->accession()."\n"; 
+           print $fh "track ". $run->accession()."\n"; 
+
+           my $ftp_location = $run_id_location{$run->accession()};
+
+           print $fh "bigDataUrl $ftp_location \n"; 
+           print $fh "shortLabel ENA:".$run->accession()."\n"; 
            print $fh "longLabel ".$run->title()."; <a href=\"www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" 
            print $fh "type bam\n\n";
 
@@ -160,7 +180,7 @@
 
        my $groups_txt_file="$ftp_dir_full_path/$study_id/$assembly_name/groups.txt";
 
-       `touch $groups_txt_file`;
+       `touch $groups_txt_file`;   ########################################  I MAKE THE groups.txt FILE IN EVERY ASSEMBLY FOLDER
 
         open(my $fh2, '>', $groups_txt_file) or die "Could not open file '$groups_txt_file' $!";
 
@@ -169,3 +189,4 @@
         print $fh2 "priority 2\n"; 
         print $fh2 "defaultIsClosed 0\n"; 
 
+ }

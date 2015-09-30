@@ -1,3 +1,7 @@
+# before I run I set up my PERL5LIB doing 2 things:  ********************************************************
+# PERL5LIB=/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
+# source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
+
 # input : STUDY_ID server_directory_path server_url
 # output : a trackhub (bunch of directories and files) on your server
 
@@ -22,7 +26,7 @@
   my $ftp_dir_full_path = $ARGV[1];   #you put here the path in your home directory to the public html where the files will be stored in your server"/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
   my $url_root = $ARGV[2];  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
    
-  my $server =  "http://plantain:3000/eg/"; #or could be $ARGV[3]; # Robert's server where he stores his REST URLs
+  my $server =  "http://plantain:3000/eg"; #or could be $ARGV[3]; # Robert's server where he stores his REST URLs
 
   my $http = HTTP::Tiny->new();
 
@@ -50,7 +54,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
 }
 
-    my $get_runs_from_study_url="getLibrariesByStudyId/$study_id"; # i get all the runs of the study
+    my $get_runs_from_study_url="/getLibrariesByStudyId/$study_id"; # i get all the runs of the study
    
     my @array_response=@{getJsonResponse($get_runs_from_study_url)};  # i call here the method that I made above
 
@@ -78,16 +82,6 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
         `mkdir $ftp_dir_full_path/$study_id/$assembly_name`;
      }
-
-# create links to the cram files
-
-    foreach my $run_id (keys %run_id_location){
-
-        my $target_file_name=$ftp_dir_full_path."/".$study_id."/".$run_id.".cram";
-
-        `ln -s  $run_id_location{$run_id} $target_file_name`;
-
-    }
 
 #hub.txt content:
 

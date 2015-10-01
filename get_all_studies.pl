@@ -90,9 +90,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
     my %runs; # it stores all distinct run ids
     my %studies; # it stores all distinct study ids
 
-# a line of this call:  http://plantain:3000/eg/getCompletedLibrariesByDate/28-09-2015
-#[{"STUDY_ID":"ERP006662","SAMPLE_ID":"SAMEA3305372","RUN_ID":"ERR962465","ORGANISM":"homo_sapiens","STATUS":"Complete","ASSEMBLY_USED":"GRCh38","ENA_LAST_UPDATED":"Tue Jul 14 2015 09:08:31",
-#"LAST_PROCESSED_DATE":"Wed Sep 30 2015 00:46:30","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/ERR962/ERR962465/ERR962465.cram"},
+# a line of this call:  http://plantain:3000/eg/getLibrariesByOrganism/oryza_sativa
+#[{"STUDY_ID":"DRP000315","SAMPLE_ID":"SAMD00009891","RUN_ID":"DRR000756","ORGANISM":"oryza_sativa_japonica_group","STATUS":"Complete","ASSEMBLY_USED":"IRGSP-1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 17:39:45",
+#"LAST_PROCESSED_DATE":"Sat Sep 05 2015 22:40:36","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000756/DRR000756.cram"},
 
  foreach my $ens_plant (keys %all_ens_plants) {
 

@@ -44,7 +44,7 @@
 		  'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => { "$assembly_name" => "$assembly_accession" } }));
   $request->headers->header(user => 'etapanari');
   $request->headers->header(auth_token => $auth_token);
-  $ua->request($request);
+
   $response = $ua->request($request);
   print Dumper ($response);
 

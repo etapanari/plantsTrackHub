@@ -87,8 +87,8 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
     
     my $get_runs_by_organism_endpoint="/getLibrariesByOrganism/"; # i get all the runs by organism to date
 
-    my %runs; # it stores all distinct assembly names for a given study
-    my %studies; # it stores as key the run id and value the location in the ftp server of arrayexpress
+    my %runs; # it stores all distinct run ids
+    my %studies; # it stores all distinct study ids
 
 # a line of this call:  http://plantain:3000/eg/getCompletedLibrariesByDate/28-09-2015
 #[{"STUDY_ID":"ERP006662","SAMPLE_ID":"SAMEA3305372","RUN_ID":"ERR962465","ORGANISM":"homo_sapiens","STATUS":"Complete","ASSEMBLY_USED":"GRCh38","ENA_LAST_UPDATED":"Tue Jul 14 2015 09:08:31",

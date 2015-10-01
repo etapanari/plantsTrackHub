@@ -115,7 +115,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
     print "\nthere are " . scalar (keys %runs) ." plant runs completed to date ( $current_date )\n";
     print "\nthere are " .scalar (keys %studies) ." plant studies completed to date ( $current_date )\n";
-    #print scalar @array_response. "\n";
+
     print "\nplants done to date:\n\n";
 
     foreach my $plant (keys %plants_done){

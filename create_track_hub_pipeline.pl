@@ -2,7 +2,7 @@
 # PERL5LIB=/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
 # source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
 
-# input : STUDY_ID server_directory_path server_url
+# input : STUDY_ID local_directory_path server_url
 # output : a trackhub (bunch of directories and files) on your server
 
 # how to call it:
@@ -23,7 +23,7 @@
   #http://plantain:3000/eg/getLibrariesByStudyId/SRP033494
 
   my $study_id = $ARGV[0];
-  my $ftp_dir_full_path = $ARGV[1];   #you put here the path in your home directory to the public html where the files will be stored in your server"/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
+  my $ftp_dir_full_path = $ARGV[1];   #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
   my $url_root = $ARGV[2];  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
    
   my $server =  "http://plantain:3000/eg"; #or could be $ARGV[3]; # Robert's server where he stores his REST URLs

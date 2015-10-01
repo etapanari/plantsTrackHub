@@ -59,12 +59,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
 # ftp://ftp.ensemblgenomes.org/pub/current/plants/species_EnsemblPlants.txt -> this is where all plant species are stored in the current release
 
-# first lines of the above file:
+# first 2 lines of the above file:
 #name	species	division	taxonomy_id	assembly	assembly_accession	genebuild	variation	pan_compara	peptide_compara	genome_alignments	other_alignments	core_db	species_id
 #Aegilops tauschii	aegilops_tauschii	EnsemblPlants	37682	ASM34733v1	GCA_000347335.1	2014-05-BGI	N	N	Y	Y	Y	aegilops_tauschii_core_28_81_1	1	
-#Amborella trichopoda	amborella_trichopoda	EnsemblPlants	13333	AMTR1.0	GCA_000471905.1	2013-10-AGD	N	Y	Y	Y	N	amborella_trichopoda_core_28_81_1	1	
-#Arabidopsis lyrata	arabidopsis_lyrata	EnsemblPlants	81972	v.1.0	GCA_000004255.1	2008-12-JGI	N	N	Y	Y	Y	arabidopsis_lyrata_core_28_81_10	1	
-#Arabidopsis thaliana	arabidopsis_thaliana	EnsemblPlants	3702	TAIR10	GCA_000001735.1	2010-09-TAIR	Y	Y	Y	Y	Y	arabidopsis_thaliana_core_28_81_10	1	
 
      my %all_ens_plants;
      my %plants_done;

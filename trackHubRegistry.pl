@@ -41,8 +41,7 @@
 
   $request = POST($url,
 		  'Content-type' => 'application/json',
-		  'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => { "$assembly_name" => "$assembly_accession" } })); #can i put more than 1 assembly here? i
- #will have track hubs with more than 1 species
+		  'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => { "$assembly_name" => "$assembly_accession" } }));
   $request->headers->header(user => 'etapanari');
   $request->headers->header(auth_token => $auth_token);
   $ua->request($request);

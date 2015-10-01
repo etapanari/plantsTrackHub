@@ -9,12 +9,12 @@
   use HTTP::Tiny;
   use JSON;
 
-  #Robert's example REST API call response
+  #Robert's example REST API call
   #http://plantain:3000/eg/getLibrariesByStudyId/SRP033494
 
-  my $study_id = $ARGV[0];
-  my $ftp_dir_full_path = $ARGV[1];   #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
-  my $url_root = $ARGV[2];  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
+  #my $study_id = $ARGV[0];
+  #my $ftp_dir_full_path = $ARGV[1];   #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
+  #my $url_root = $ARGV[2];  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
    
   my $server =  "http://plantain:3000/eg"; #or could be $ARGV[3]; # Robert's server where he stores his REST URLs
 

@@ -9,9 +9,6 @@
   use HTTP::Tiny;
   use JSON;
 
-  #Robert's example REST API call
-  #http://plantain:3000/eg/getLibrariesByStudyId/SRP033494
-
   #my $study_id = $ARGV[0];
   #my $ftp_dir_full_path = $ARGV[1];   #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
   #my $url_root = $ARGV[2];  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
@@ -52,9 +49,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
       print "Failed for $endpoint! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200" reason "OK"
       return 0;
   }
-
 }
-
 
 
 # ftp://ftp.ensemblgenomes.org/pub/current/plants/species_EnsemblPlants.txt -> this is where all plant species are stored in the current release

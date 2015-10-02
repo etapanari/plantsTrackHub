@@ -61,7 +61,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
      my %all_ens_plants;
      my %plants_done;
 
-    `wget ftp://ftp.ensemblgenomes.org/pub/current/plants/species_EnsemblPlants.txt`;
+   # `wget ftp://ftp.ensemblgenomes.org/pub/current/plants/species_EnsemblPlants.txt`;
 
    open(IN, "species_EnsemblPlants.txt") or die "Can't open species_EnsemblPlants.txt\n";
 
@@ -98,10 +98,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
          next unless($hash{"STATUS"} eq "Complete"); 
 
-         $plants_done{ $hash{"ORGANISM"} }= 1; 
+         $plants_done{ $hash{"ORGANISM"} }++; 
          $runs {$hash{"RUN_ID"}} = 1;
          $studies {$hash {"STUDY_ID"}} = 1 ;
-         
      }
 }
 
@@ -112,10 +111,10 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
     foreach my $plant (keys %plants_done){
 
-            print $plant."\n";
+            print $plant." =>\t". $plants_done{$plant}." runs \n";
 
     }
     print "\n";
 
-    print "in total there are " . scalar (keys %plants_done) . " plants done to date\n\n";
+    print "In total there are " . scalar (keys %plants_done) . " plants done to date\n\n";
 

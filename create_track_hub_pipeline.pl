@@ -60,6 +60,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
     my %assembly_names; #  it stores all distinct assembly names for a given study
     my %run_id_location; # it stores as key the run id and value the location in the ftp server of arrayexpress
+    my %run_assembly; #  it stores as key the run id and value the assembly name 
 
 # a line of this call:  http://plantain:3000/eg/getLibrariesByStudyId/SRP033494
 #[{"STUDY_ID":"SRP033494","SAMPLE_ID":"SAMN02434874","RUN_ID":"SRR1042754","ORGANISM":"arabidopsis_thaliana","STATUS":"Complete","ASSEMBLY_USED":"TAIR10","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:11:03",
@@ -73,6 +74,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
             $assembly_names{$hash{"ASSEMBLY_USED"}} = 1; # I store the value of the $hash{"ASSEMBLY_USED"} ie the "TAIR10" as a key in my hash %assembly_names
             $run_id_location{$hash{"RUN_ID"}}= $hash{"FTP_LOCATION"}; 
+            $run_assembly { $hash{"RUN_ID"} } = $hash{"ASSEMBLY_USED"};
          }
      }
 
@@ -152,8 +154,8 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
          for my $run (@{$study->runs()}) { # i get all runs from the study using Dan's ENA API
 
-
            next unless ($run_id_location{$run->accession()}); # if Robert's API call did not return this run id then I won't use it
+           next unless ($run_assembly{$run->accession} eq $assembly_name );
            
            print $fh "track ". $run->accession()."\n"; 
 

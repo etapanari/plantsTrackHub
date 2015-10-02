@@ -61,7 +61,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
      my %all_ens_plants;
      my %plants_done;
 
-   # `wget ftp://ftp.ensemblgenomes.org/pub/current/plants/species_EnsemblPlants.txt`;
+    `wget ftp://ftp.ensemblgenomes.org/pub/current/plants/species_EnsemblPlants.txt`;
 
    open(IN, "species_EnsemblPlants.txt") or die "Can't open species_EnsemblPlants.txt\n";
 
@@ -104,10 +104,10 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
      }
 }
 
-    print "\nthere are " . scalar (keys %runs) ." plant runs completed to date ( $current_date )\n";
-    print "\nthere are " .scalar (keys %studies) ." plant studies completed to date ( $current_date )\n";
+    print "\nThere are " . scalar (keys %runs) ." plant runs completed to date ( $current_date )\n";
+    print "\nThere are " .scalar (keys %studies) ." plant studies completed to date ( $current_date )\n";
 
-    print "\nplants done to date:\n\n";
+    print "\n****** Plants done to date: ******\n\n";
 
     foreach my $plant (keys %plants_done){
 

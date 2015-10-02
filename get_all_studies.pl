@@ -60,8 +60,15 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
      my %all_ens_plants;
      my %plants_done;
+ 
 
-    `wget ftp://ftp.ensemblgenomes.org/pub/current/plants/species_EnsemblPlants.txt`;
+   if (-e "species_EnsemblPlants.txt") { # if the file exists , rm and get it again to make sure that you have the latest set of plants
+
+     `rm "species_EnsemblPlants.txt"` ;
+
+   }
+
+        `wget ftp://ftp.ensemblgenomes.org/pub/current/plants/species_EnsemblPlants.txt`;
 
    open(IN, "species_EnsemblPlants.txt") or die "Can't open species_EnsemblPlants.txt\n";
 
@@ -116,5 +123,5 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
     }
     print "\n";
 
-    print "In total there are " . scalar (keys %plants_done) . " plants done to date\n\n";
+    print "In total there are " . scalar (keys %plants_done) . " plants done to date.\n\n";
 

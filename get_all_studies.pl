@@ -68,7 +68,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
    }
 
-        `wget ftp://ftp.ensemblgenomes.org/pub/current/plants/species_EnsemblPlants.txt`;
+   `wget ftp://ftp.ensemblgenomes.org/pub/current/plants/species_EnsemblPlants.txt`;
 
    open(IN, "species_EnsemblPlants.txt") or die "Can't open species_EnsemblPlants.txt\n";
 

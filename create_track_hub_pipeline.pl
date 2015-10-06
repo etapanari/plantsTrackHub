@@ -70,7 +70,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
          my %hash = %{$hash_ref};
 
-         if($hash{"STATUS"} eq "Complete") { # i want to use only the "complete" runs
+         if($hash{"STATUS"} eq "Complete" and $hash{"ORGANISM"} ne "homo_sapiens") { # i want to use only the "complete" runs
 
             $assembly_names{$hash{"ASSEMBLY_USED"}} = 1; # I store the value of the $hash{"ASSEMBLY_USED"} ie the "TAIR10" as a key in my hash %assembly_names
             $run_id_location{$hash{"RUN_ID"}}= $hash{"FTP_LOCATION"}; 

@@ -19,8 +19,9 @@
 
   my $pwd = $ARGV[0]; # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
   my $trackHub_txt_file_url= $ARGV[1];
-  my $assembly_name = $ARGV[2];   # this is the Ens assembly name ie  JGI2.0 
-  my $assembly_accession = $ARGV[3];  # i put here the INSDC assembly accession  ie GCA_000002775.2
+  my $hub_name = $ARGV[2];
+  my $assembly_name = $ARGV[3];   # this is the Ens assembly name ie  JGI2.0 
+  my $assembly_accession = $ARGV[4];  # i put here the INSDC assembly accession  ie GCA_000002775.2
 
   my $server = "http://193.62.54.43:3000";
  
@@ -46,6 +47,12 @@
   $request->headers->header(auth_token => $auth_token);
 
   $response = $ua->request($request);
-  print Dumper ($response);
+
+  if($response->code == 201) {
+    print $hub_name ." is OK\n";
+  } else {
+    printf "%s\t%d\t%s\n", $hub_name, $response->code, from_json($response->content)->{error};
+  } 
+  #print Dumper ($response);
 
   

@@ -70,9 +70,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
          my %hash = %{$hash_ref};
 
-         if(! $hash{"assembly_id"}){  # some species don't have assembly id
+         if(! $hash{"assembly_id"}){  # some species don't have assembly id, ie accession
 
-             $assName_assAccession  {$hash{"assembly_name"}}  =  "missing";
+             $assName_assAccession  {$hash{"assembly_name"}} =  "missing assembly accession";
              $ens_plant_names {$hash {"species"}} = 1;
              next;
          }
@@ -81,6 +81,17 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
          $ens_plant_names {$hash {"species"}} = 1;
 
   }
+
+#   foreach my $asse_name (keys %assName_assAccession) {
+# 
+#        foreach my $plant (keys %{$assName_assAccession{$asse_name}}){
+# 
+#              print $plant . "\t". $asse_name . "\t". $assName_assAccession{$asse_name}{$plant}."\n";
+#        }
+#   }
+# 
+# 
+#   __END__
 
     my $get_runs_by_organism_endpoint="http://plantain:3000/eg/getLibrariesByOrganism/"; # i get all the runs by organism to date
 
@@ -111,32 +122,68 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
          $runs {$hash{"RUN_ID"}} = 1;
          $studies {$hash {"STUDY_ID"}} = 1 ;
         
-         $studyId_assemblyName { $hash {"STUDY_ID"} }= $hash {"ASSEMBLY_USED"};
+         $studyId_assemblyName { $hash {"STUDY_ID"} } { $hash {"ASSEMBLY_USED"} } = 1; # i can have more than one assembly for each study
         
      }
-
 }
-
 
     foreach my $study_id (keys %studyId_assemblyName){ 
 
-         #`perl create_track_hub_pipeline.pl $study_id $ftp_dir_full_path $http_url` ; # here I create for every study a track hub *********************
+ 
+          print "creating track hub for study $study_id\n";
+         `perl create_track_hub_pipeline.pl $study_id $ftp_dir_full_path $http_url` ; # here I create for every study a track hub *********************
 
           my $hub_txt_url = $http_url . "/" . $study_id . "/hub.txt" ;
            
-          my $assembly_name = $studyId_assemblyName{$study_id};
-          my $assembly_accession = $assName_assAccession{$assembly_name} ;
-          
+          my @assembly_names;
+      
+          foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data                            
+         
+               if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
+                   print "there is no such assembly name as $assembly_name in my hash from ensemblgenomes REST call: $rest_call_plants \n";
+                   next;
+               }
+               next if($assName_assAccession{$assembly_name} eq "missing assembly accession"); # i dont need the assembly names if there is no assembly accession as I cannot load the track hub in the Registry without assembly accession
+               push ( @assembly_names, $assembly_name) ; # this array has only the assembly names that have assembly accessions
 
-          next if($assembly_accession eq "missing"); 
- 
-          my $output = `perl trackHubRegistry.pl ensemblplants $hub_txt_url $study_id $assembly_name $assembly_accession` ;  # here I register every track hub in the Registry*********************
+          }
+          my $assemblyNames_assemblyAccesions_string="empty" ;
+          my $counter=0;
+
+          foreach my $assembly_name ( @assembly_names ){
+
+               $counter ++;
+
+               my $string =  $assembly_name.",".$assName_assAccession{$assembly_name} ;
+
+               if (scalar @assembly_names ==1 ){
+
+                     $assemblyNames_assemblyAccesions_string = $string ;
+
+               }else{
+
+                    if($counter == 1){
+
+                       $assemblyNames_assemblyAccesions_string = $string ;
+
+                    }else{
+
+                       $assemblyNames_assemblyAccesions_string = $assemblyNames_assemblyAccesions_string ."," . $string;
+
+                   }
+               }
+
+          }
+
+
+
+          next if ($assemblyNames_assemblyAccesions_string eq "empty"); # i can't put it in the registry if there is no assembly accession
+
+          #print $study_id."\t".$assemblyNames_assemblyAccesions_string."\n";
+          my $output = `perl trackHubRegistry.pl testing $hub_txt_url $study_id $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
           print $output ;
 
-
     } #************************************************************************************
-
-
 
     print "\nThere are " . scalar (keys %runs) ." plant runs completed to date ( $current_date )\n";
     print "\nThere are " .scalar (keys %studies) ." plant studies completed to date ( $current_date )\n";

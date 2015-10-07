@@ -108,7 +108,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
 	  print $fh "hub ".$study->accession."\n"; 
 	  print $fh "shortLabel ENA STUDY: ".$study->accession."\n"; 
-	  print $fh "longLabel ".$study->title." ; <a href=\"www.ebi.ac.uk/ena/data/view/".$study->accession."\">".$study->accession."</a>"."\n";
+	  print $fh "longLabel ".$study->title." ; <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study->accession."\">".$study->accession."</a>"."\n";
 	  print $fh "genomesFile genomes.txt\n";
 	  print $fh "email tapanari\@ebi.ac.uk\n";
       
@@ -163,8 +163,8 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
            print $fh "bigDataUrl $ftp_location \n"; 
            print $fh "shortLabel ENA:".$run->accession()."\n"; 
-           print $fh "longLabel ".$run->title()."; <a href=\"www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
-           print $fh "type bam\n\n";
+           print $fh "longLabel ".$run->title()."; <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
+           print $fh "type cram\n\n";
 
          }     
       }

@@ -1,6 +1,6 @@
 
 # in this cript I connect to the trackHub Registry db and I register (upload) a track hub
-
+# i have 2 accounts : 1. user :etapanari , pwd : ensemblplants 2. user:tapanari , pwd : testing
   use strict ;
   use warnings;
   use Data::Dumper;
@@ -20,8 +20,9 @@
   my $pwd = $ARGV[0]; # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
   my $trackHub_txt_file_url= $ARGV[1];
   my $hub_name = $ARGV[2];
-  my $assembly_name = $ARGV[3];   # this is the Ens assembly name ie  JGI2.0 
-  my $assembly_accession = $ARGV[4];  # i put here the INSDC assembly accession  ie GCA_000002775.2
+  my $assembly_name_accession_pairs = $ARGV[3];
+  #my $assembly_name = $ARGV[3];   # this is the Ens assembly name ie  JGI2.0 
+  #my $assembly_accession = $ARGV[4];  # i put here the INSDC assembly accession  ie GCA_000002775.2
 
   my $server = "http://193.62.54.43:3000";
  
@@ -29,7 +30,7 @@
   my $url = $server.$endpoint; 
   my $request = GET($url) ;
 
-  $request->headers->authorization_basic('etapanari', $pwd);
+  $request->headers->authorization_basic('tapanari', $pwd);
   # print Dumper $request;
   my $response = $ua->request($request);
 
@@ -40,17 +41,41 @@
   my $eg_server = "http://rest.ensemblgenomes.org";
   my $endpoint_eg_assembly_accession = "/info/assembly/populus_trichocarpa?content-type=application/json"; 
 
+  #my $assembly_name_accession_pairs=  "ASM242v1,GCA_000002425.1,IRGSP-1.0,GCA_000005425.2";
+  my @words = split(/,/, $assembly_name_accession_pairs);
+  my $assemblies;
+  for(my $i=0; $i<$#words; $i+=2) {
+    $assemblies->{$words[$i]} = $words[$i+1];
+  }
+
   $request = POST($url,
 		  'Content-type' => 'application/json',
-		  'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => { "$assembly_name" => "$assembly_accession" } }));
-  $request->headers->header(user => 'etapanari');
+#		  'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => { "$assembly_name" => "$assembly_accession" } }));
+		  'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies }));
+  $request->headers->header(user => 'tapanari');
   $request->headers->header(auth_token => $auth_token);
 
   $response = $ua->request($request);
 
-  if($response->code == 201) {
+  my $response_code= $response->code;
+
+  if($response_code == 201) {
+
     print $hub_name ." is OK\n";
+
+  } elsif($response_code == 503 or $response_code == 500) {
+
+     for(my $i=0; $i<10; $i++) {
+       printf "\n%s\t%d\t%s. $i retrying attempt: Retrying after 5s...", $hub_name, $response->code, from_json($response->content)->{error};
+       sleep 5;
+       $response = $ua->request($request);
+       $response_code= $response->code;
+       print "$hub_name is OK\n" and last if $response_code == 201;
+       printf "%s\t%d\t%s\n", $hub_name, $response->code, from_json($response->content)->{error} and last if $response_code < 500;
+       print "\n";
+     }
   } else {
+    print "$assembly_name_accession_pairs , ";
     printf "%s\t%d\t%s\n", $hub_name, $response->code, from_json($response->content)->{error};
   } 
   #print Dumper ($response);

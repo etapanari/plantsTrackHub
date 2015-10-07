@@ -15,7 +15,7 @@
   my $ua = LWP::UserAgent->new;
 
 # example call:
-#perl trackHubRegistry.pl ensemblplants http://www.ebi.ac.uk/~tapanari/data/test/SRP036860/hub.txt JGI2.0 GCA_000002775.2
+#perl trackHubRegistry.pl ensemblplants http://www.ebi.ac.uk/~tapanari/data/test/SRP036860/hub.txt SRP036860 JGI2.0,GCA_000002775.2
 
   my $pwd = $ARGV[0]; # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
   my $trackHub_txt_file_url= $ARGV[1];
@@ -78,6 +78,6 @@
     print "$assembly_name_accession_pairs , ";
     printf "%s\t%d\t%s\n", $hub_name, $response->code, from_json($response->content)->{error};
   } 
-  #print Dumper ($response);
+
 
   

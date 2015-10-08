@@ -18,10 +18,6 @@
 
   use Bio::EnsEMBL::ENA::SRA::BaseSraAdaptor qw(get_adaptor);
 
-
-  #Robert's example REST API call response
-  #http://plantain:3000/eg/getLibrariesByStudyId/SRP033494
-
   my $study_id = $ARGV[0];
   my $ftp_dir_full_path = $ARGV[1];   #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
   my $url_root = $ARGV[2];  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
@@ -33,8 +29,7 @@
 
 sub getJsonResponse { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
 
-  my $endpoint = shift; # example endpoint: "getLibrariesByStudyId/SRP033494";
-  my $url = $server.$endpoint;
+  my $url = shift; # example: "http://plantain:3000/eg/getLibrariesByStudyId/SRP033494";
 
   my $response = $http->get($url);
 
@@ -48,15 +43,38 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
   }else{
 
       my ($status, $reason) = ($response->{status}, $response->{reason}); #LWP perl library for dealing with http
-      print "Failed for $endpoint! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200" reason "OK"
+      print "Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200" reason "OK"
       return 0;
   }
 
 }
 
-    my $get_runs_from_study_url="/getLibrariesByStudyId/$study_id"; # i get all the runs of the study
+
+    my $get_plant_roberts_plant_names_endpoint = "/getOrganisms/plants" ;
+    my $get_plant_names_url= $server . $get_plant_roberts_plant_names_endpoint; # i get all organism names that robert uses for plants to date
+
+    my %robert_plant_names;
+
+#response:
+#[{"ORGANISM":"arabidopsis_thaliana"},{"ORGANISM":"brassica_rapa"},{"ORGANISM":"hordeum_vulgare"},{"ORGANISM":"hordeum_vulgare_subsp._vulgare"},
+#{"ORGANISM":"medicago_truncatula"},{"ORGANISM":"oryza_sativa"},{"ORGANISM":"oryza_sativa_japonica_group"},{"ORGANISM":"physcomitrella_patens"},
+#{"ORGANISM":"populus_trichocarpa"},{"ORGANISM":"sorghum_bicolor"},{"ORGANISM":"triticum_aestivum"},{"ORGANISM":"vitis_vinifera"},{"ORGANISM":"zea_mays"}]
+
+     my @plant_names_response = @{getJsonResponse($get_plant_names_url)};  # i call here the method that I made above
+
+     foreach my $hash_ref (@plant_names_response){
+
+         my %hash = %{$hash_ref};
+
+         $robert_plant_names{ $hash{"ORGANISM"} }=1;
+        
+     }
+
+
+
+    my $get_runs_from_study_url= $server . "/getLibrariesByStudyId/$study_id"; # i get all the runs of the study
    
-    my @array_response=@{getJsonResponse($get_runs_from_study_url)};  # i call here the method that I made above
+    my @runs_response=@{getJsonResponse($get_runs_from_study_url)};  # i call here the method that I made above
 
     my %assembly_names; #  it stores all distinct assembly names for a given study
     my %run_id_location; # it stores as key the run id and value the location in the ftp server of arrayexpress
@@ -66,11 +84,11 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 #[{"STUDY_ID":"SRP033494","SAMPLE_ID":"SAMN02434874","RUN_ID":"SRR1042754","ORGANISM":"arabidopsis_thaliana","STATUS":"Complete","ASSEMBLY_USED":"TAIR10","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:11:03",
 #"LAST_PROCESSED_DATE":"Tue Jun 16 2015 15:07:34","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/SRR104/004/SRR1042754/SRR1042754.cram"},
 
-     foreach my $hash_ref (@array_response){
+     foreach my $hash_ref (@runs_response){
 
          my %hash = %{$hash_ref};
 
-         if($hash{"STATUS"} eq "Complete" and $hash{"ORGANISM"} ne "homo_sapiens") { # i want to use only the "complete" runs
+         if($hash{"STATUS"} eq "Complete" and $robert_plant_names{$hash {"ORGANISM"}}) { # i want to use only the "complete" runs and plants only
 
             $assembly_names{$hash{"ASSEMBLY_USED"}} = 1; # I store the value of the $hash{"ASSEMBLY_USED"} ie the "TAIR10" as a key in my hash %assembly_names
             $run_id_location{$hash{"RUN_ID"}}= $hash{"FTP_LOCATION"}; 
@@ -164,7 +182,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
            print $fh "bigDataUrl $ftp_location \n"; 
            print $fh "shortLabel ENA:".$run->accession()."\n"; 
            print $fh "longLabel ".$run->title()."; <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
-           print $fh "type cram\n\n";
+           print $fh "type bam\n\n";
 
          }     
       }

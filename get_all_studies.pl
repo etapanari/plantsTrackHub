@@ -4,7 +4,7 @@
 # in this script I am getting from array express REST API all studies to date and create my track hubs, or make stats
 
 # example run:
-# perl get_all_studies.pl /homes/tapanari/public_html/data/test  http://www.ebi.ac.uk/~tapanari/data/test
+# perl get_all_studies.pl tapanari testing /homes/tapanari/public_html/data/test  http://www.ebi.ac.uk/~tapanari/data/test
 
   use strict ;
   use warnings;
@@ -13,8 +13,10 @@
   use HTTP::Tiny;
   use JSON;
 
-  my $ftp_dir_full_path = $ARGV[0];   #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
-  my $http_url = $ARGV[1];  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
+  my $registry_user_name = $ARGV[0];
+  my $registry_pwd = $ARGV[1] ;
+  my $ftp_dir_full_path = $ARGV[2];   #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
+  my $http_url = $ARGV[3];  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
    
   my $server =  "http://plantain:3000/eg"; #or could be $ARGV[2]; # Robert's server where he stores his REST URLs
 
@@ -30,6 +32,13 @@
 
   my @words = split(/-/, $date_wrong_order);
   my $current_date = $words[2] . "-". $words[1]. "-". $words[0];  # now it is 01-10-2015 (1st October)
+
+  print "\n ******** deleting all track hubs registered in the Registry under this account-> user:$registry_user_name , password: $registry_pwd\n\n";  
+  my $delete_script_output = `perl delete_registered_trackhubs.pl $registry_user_name $registry_pwd` ; 
+  print $delete_script_output;
+
+  print "\n ******** deleting everything in directory $ftp_dir_full_path\n\n";
+ `rm -r $ftp_dir_full_path/*`;  # removing also the actual track hub files in the ftp server
 
 
 sub getJsonResponse { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
@@ -53,9 +62,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
   }
 }
 
-  my $rest_call_plants="http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json";
+  my $rest_call_plants="http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
 
-  my @array_response_plants_assemblies = @{getJsonResponse($rest_call_plants)};  # i call here the method that I made above
+  my @array_response_plants_assemblies = @{getJsonResponse($rest_call_plants)};  
 
   my %assName_assAccession;
   my %ens_plant_names;
@@ -70,7 +79,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
          my %hash = %{$hash_ref};
 
-         if(! $hash{"assembly_id"}){  # some species don't have assembly id, ie accession
+         if(! $hash{"assembly_id"}){  # some species don't have assembly id, ie assembly accession
 
              $assName_assAccession  {$hash{"assembly_name"}} =  "missing assembly accession";
              $ens_plant_names {$hash {"species"}} = 1;
@@ -95,11 +104,11 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
     my $get_runs_by_organism_endpoint="http://plantain:3000/eg/getLibrariesByOrganism/"; # i get all the runs by organism to date
 
-    my %plants_done;
+    my %robert_plants_done;
     my %runs; # it stores all distinct run ids
     my %studies; # it stores all distinct study ids
     my %studyId_assemblyName; # stores as key the study id and as value the ensembl assembly name ie for oryza_sativa it would be IRGSP-1.0
-    my %plant_study;
+    my %robert_plant_study;
 
 # a line of this call:  http://plantain:3000/eg/getLibrariesByOrganism/oryza_sativa
 #[{"STUDY_ID":"DRP000315","SAMPLE_ID":"SAMD00009891","RUN_ID":"DRR000756","ORGANISM":"oryza_sativa_japonica_group","STATUS":"Complete","ASSEMBLY_USED":"IRGSP-1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 17:39:45",
@@ -109,16 +118,16 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
      my $url = $get_runs_by_organism_endpoint . $ens_plant;
 
-     my @array_response = @{getJsonResponse($url)};  # i call here the method that I made above
+     my @get_runs_by_organism_response = @{getJsonResponse($url)};  # i call here the method that I made above
 
-     foreach my $hash_ref (@array_response){
+     foreach my $hash_ref (@get_runs_by_organism_response){
 
          my %hash = %{$hash_ref};
 
          next unless($hash{"STATUS"} eq "Complete"); 
 
-         $plants_done{ $hash{"ORGANISM"} }++; 
-         $plant_study {$hash{"ORGANISM"} }  {$hash{"STUDY_ID"}} = 1;
+         $robert_plants_done{ $hash{"ORGANISM"} }++; 
+         $robert_plant_study {$hash{"ORGANISM"} }  {$hash{"STUDY_ID"}} = 1;
          $runs {$hash{"RUN_ID"}} = 1;
          $studies {$hash {"STUDY_ID"}} = 1 ;
         
@@ -127,17 +136,19 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
      }
 }
 
+    my $line_counter = 0;
+
     foreach my $study_id (keys %studyId_assemblyName){ 
 
- 
-          print "creating track hub for study $study_id\n";
+          $line_counter ++;
+          print "$line_counter.\tcreating track hub for study $study_id\n";
          `perl create_track_hub_pipeline.pl $study_id $ftp_dir_full_path $http_url` ; # here I create for every study a track hub *********************
 
           my $hub_txt_url = $http_url . "/" . $study_id . "/hub.txt" ;
            
           my @assembly_names;
       
-          foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data                            
+          foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data , get runs by organism REST call                           
          
                if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
                    print "there is no such assembly name as $assembly_name in my hash from ensemblgenomes REST call: $rest_call_plants \n";
@@ -180,22 +191,32 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
           next if ($assemblyNames_assemblyAccesions_string eq "empty"); # i can't put it in the registry if there is no assembly accession
 
           #print $study_id."\t".$assemblyNames_assemblyAccesions_string."\n";
-          my $output = `perl trackHubRegistry.pl testing $hub_txt_url $study_id $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
+          my $output = `perl trackHubRegistry.pl $registry_user_name $registry_pwd $hub_txt_url $study_id $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
           print $output ;
 
     } #************************************************************************************
 
+
+    print "Robert's REST calls give the following stats:\n";
     print "\nThere are " . scalar (keys %runs) ." plant runs completed to date ( $current_date )\n";
     print "\nThere are " .scalar (keys %studies) ." plant studies completed to date ( $current_date )\n";
 
     print "\n****** Plants done to date: ******\n\n";
 
-    foreach my $plant (keys %plants_done){
+    my $counter_ens_plants = 0 ; 
+    my $index = 0;
 
-            print $plant." =>\t". $plants_done{$plant}." runs of ". scalar ( keys ( %{$plant_study{$plant}} ) )." studies\n";
+    foreach my $plant (keys %robert_plants_done){
+
+            if($ens_plant_names {$plant}){
+               $counter_ens_plants++;
+            }
+            $index++;
+            print $index.". ".$plant." =>\t". $robert_plants_done{$plant}." runs / ". scalar ( keys ( %{$robert_plant_study{$plant}} ) )." studies\n";
 
     }
     print "\n";
 
-     print "In total there are " . scalar (keys %plants_done) . " plants done to date.\n\n";
+
+     print "In total there are " .$counter_ens_plants . " Ensembl plants done to date.\n\n";
 

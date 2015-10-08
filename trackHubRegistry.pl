@@ -15,14 +15,12 @@
   my $ua = LWP::UserAgent->new;
 
 # example call:
-#perl trackHubRegistry.pl ensemblplants http://www.ebi.ac.uk/~tapanari/data/test/SRP036860/hub.txt SRP036860 JGI2.0,GCA_000002775.2
-
-  my $pwd = $ARGV[0]; # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
-  my $trackHub_txt_file_url= $ARGV[1];
-  my $hub_name = $ARGV[2];
-  my $assembly_name_accession_pairs = $ARGV[3];
-  #my $assembly_name = $ARGV[3];   # this is the Ens assembly name ie  JGI2.0 
-  #my $assembly_accession = $ARGV[4];  # i put here the INSDC assembly accession  ie GCA_000002775.2
+#perl trackHubRegistry.pl etapanari ensemblplants http://www.ebi.ac.uk/~tapanari/data/test/SRP036860/hub.txt SRP036860 JGI2.0,GCA_000002775.2
+  my $username = $ARGV[0];
+  my $pwd = $ARGV[1]; # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
+  my $trackHub_txt_file_url= $ARGV[2];
+  my $hub_name = $ARGV[3];
+  my $assembly_name_accession_pairs = $ARGV[4];
 
   my $server = "http://193.62.54.43:3000";
  
@@ -30,7 +28,7 @@
   my $url = $server.$endpoint; 
   my $request = GET($url) ;
 
-  $request->headers->authorization_basic('tapanari', $pwd);
+  $request->headers->authorization_basic($username , $pwd);
   # print Dumper $request;
   my $response = $ua->request($request);
 
@@ -50,9 +48,9 @@
 
   $request = POST($url,
 		  'Content-type' => 'application/json',
-#		  'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => { "$assembly_name" => "$assembly_accession" } }));
+		                                                                         #  assemblies => { "$assembly_name" => "$assembly_accession" } }));
 		  'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies }));
-  $request->headers->header(user => 'tapanari');
+  $request->headers->header(user => $username);
   $request->headers->header(auth_token => $auth_token);
 
   $response = $ua->request($request);
@@ -61,7 +59,7 @@
 
   if($response_code == 201) {
 
-    print $hub_name ." is OK\n";
+    print $hub_name ." is Registered\n";
 
   } elsif($response_code == 503 or $response_code == 500) {
 
@@ -70,7 +68,7 @@
        sleep 5;
        $response = $ua->request($request);
        $response_code= $response->code;
-       print "$hub_name is OK\n" and last if $response_code == 201;
+       print "$hub_name is Registered\n" and last if $response_code == 201;
        printf "%s\t%d\t%s\n", $hub_name, $response->code, from_json($response->content)->{error} and last if $response_code < 500;
        print "\n";
      }

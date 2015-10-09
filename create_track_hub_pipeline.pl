@@ -202,22 +202,22 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
                   foreach my $attr_sample (@attrib_array_sample){
  
-                     print "sample:".$attr_sample->{"TAG"}."=".$attr_sample->{"VALUE"}." ";
+                     print $fh "sample:".$attr_sample->{"TAG"}."=".$attr_sample->{"VALUE"}." ";
                   }  
 
                   foreach my $attr_exp (@attrib_array_experiment){
 
-                     print "experiment:".$attr_exp->{"TAG"}."=".$attr_exp->{"VALUE"}." ";
+                     print $fh "experiment:".$attr_exp->{"TAG"}."=".$attr_exp->{"VALUE"}." ";
                   }
 
                   my @attrib_array_runs= @{$run->{"attributes"}};
 
                   foreach my $attr_run (@attrib_array_runs){
 
-                     print "run:".$attr_run->{"TAG"}."=".$attr_run->{"VALUE"}." ";
+                     print $fh "run:".$attr_run->{"TAG"}."=".$attr_run->{"VALUE"}." ";
 
                   }
-                  print "\n\n";
+                  print $fh "\n\n";
               }
 
         }

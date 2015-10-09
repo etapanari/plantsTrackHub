@@ -79,6 +79,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
     my %assembly_names; #  it stores all distinct assembly names for a given study
     my %run_id_location; # it stores as key the run id and value the location in the ftp server of arrayexpress
     my %run_assembly; #  it stores as key the run id and value the assembly name 
+    my %run_robert_species_name;
 
 # a line of this call:  http://plantain:3000/eg/getLibrariesByStudyId/SRP033494
 #[{"STUDY_ID":"SRP033494","SAMPLE_ID":"SAMN02434874","RUN_ID":"SRR1042754","ORGANISM":"arabidopsis_thaliana","STATUS":"Complete","ASSEMBLY_USED":"TAIR10","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:11:03",
@@ -93,6 +94,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
             $assembly_names{$hash{"ASSEMBLY_USED"}} = 1; # I store the value of the $hash{"ASSEMBLY_USED"} ie the "TAIR10" as a key in my hash %assembly_names
             $run_id_location{$hash{"RUN_ID"}}= $hash{"FTP_LOCATION"}; 
             $run_assembly { $hash{"RUN_ID"} } = $hash{"ASSEMBLY_USED"};
+            $run_robert_species_name {$hash{"RUN_ID"}} = $hash {"ORGANISM"};
          }
      }
 
@@ -170,36 +172,62 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
          open(my $fh, '>', $trackDb_txt_file) or die "Could not open file '$trackDb_txt_file' $!";
 
-         for my $run (@{$study->runs()}) { # i get all runs from the study using Dan's ENA API
+         for my $sample ( @{ $study->samples() } ) { # I print the sample attributes here
 
-           next unless ($run_id_location{$run->accession()}); # if Robert's API call did not return this run id then I won't use it
-           next unless ($run_assembly{$run->accession} eq $assembly_name );
+             my @attrib_array_sample= @{$sample->{"attributes"}};
+             my @experiments =@{$sample->experiments()};
+
+
+             foreach my $experiment (@experiments){
+
+                my @attrib_array_experiment= @{$experiment->{"attributes"}};
+                my @runs =@{$experiment->runs()};
+
+ 
+                foreach my $run (@runs){
+
+                  next unless ($run_id_location{$run->accession()}); # if Robert's API call did not return this run id then I won't use it
+                  next unless ($run_assembly{$run->accession} eq $assembly_name );
            
-           print $fh "track ". $run->accession()."\n"; 
+                  my $ftp_location = $run_id_location{$run->accession};
+                  my $species_name = $run_robert_species_name {$run->accession};
 
-           my $ftp_location = $run_id_location{$run->accession};
+                  print $fh "track ". $run->accession()."\n"; 
+                  print $fh "bigDataUrl $ftp_location \n"; 
+                  print $fh "shortLabel ENA:".$run->accession()."\n"; 
+                  print $fh "longLabel ".$run->title()."; <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
+                  print $fh "type cram\n";
+                  print $fh "metadata species=$species_name ";
 
-           print $fh "bigDataUrl $ftp_location \n"; 
-           print $fh "shortLabel ENA:".$run->accession()."\n"; 
-           print $fh "longLabel ".$run->title()."; <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
-           print $fh "type bam\n";
-           print $fh "metadata ";
-           foreach my $key (keys %$run){
 
-             next unless ($key eq "attributes");
-             my @attrib_array= @{$run->{$key}};
+                  foreach my $attr_sample (@attrib_array_sample){
+ 
+                     print "sample:".$attr_sample->{"TAG"}."=".$attr_sample->{"VALUE"}." ";
+                  }  
 
-             foreach my $attr (@attrib_array){
-               foreach my $key2 (keys %$attr){
-                   print $key2."=".$attr->{$key2}."\t";
-               }
-               #print Dumper ($attr)."\n";
-             }
-           }
-           print "\n\n";
+                  foreach my $attr_exp (@attrib_array_experiment){
 
-         }     
+                     print "experiment:".$attr_exp->{"TAG"}."=".$attr_exp->{"VALUE"}." ";
+                  }
+
+                  my @attrib_array_runs= @{$run->{"attributes"}};
+
+                  foreach my $attr_run (@attrib_array_runs){
+
+                     print "run:".$attr_run->{"TAG"}."=".$attr_run->{"VALUE"}." ";
+
+                  }
+                  print "\n\n";
+              }
+
+        }
+
+    }
+
+
+              
       }
+
  
 # groups.txt content:
 

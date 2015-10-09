@@ -33,13 +33,23 @@
   my @words = split(/-/, $date_wrong_order);
   my $current_date = $words[2] . "-". $words[1]. "-". $words[0];  # now it is 01-10-2015 (1st October)
 
+
+  my $datestring = localtime();
+  print " Just started running the pipeline on:\n";
+  print "Local date and time: $datestring\n";
+
   print "\n ******** deleting all track hubs registered in the Registry under this account-> user:$registry_user_name , password: $registry_pwd\n\n";  
   my $delete_script_output = `perl delete_registered_trackhubs.pl $registry_user_name $registry_pwd` ; 
   print $delete_script_output;
 
   print "\n ******** deleting everything in directory $ftp_dir_full_path\n\n";
  `rm -r $ftp_dir_full_path/*`;  # removing also the actual track hub files in the ftp server
-
+  if($? !=0){
+ 
+          print "failed to remove the dir\n";
+  }else{
+          print "deletion successful\n";
+  }
 
 sub getJsonResponse { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
 
@@ -138,11 +148,24 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
     my $line_counter = 0;
 
+  print "\n ******** starting to make directories and files for the track hubs in the ftp server: $http_url\n\n";
+
     foreach my $study_id (keys %studyId_assemblyName){ 
 
           $line_counter ++;
           print "$line_counter.\tcreating track hub for study $study_id\n";
          `perl create_track_hub_pipeline.pl $study_id $ftp_dir_full_path $http_url` ; # here I create for every study a track hub *********************
+   }
+
+   my $datestring2 = localtime();
+   print " \nJust finished creating the files and directories of the track hubs in the server on:\n";
+   print "Local date and time: $datestring2\n";
+
+    print "\n***********************************\n\n";
+
+    my $line_counter2 = 0;
+
+    foreach my $study_id (keys %studyId_assemblyName){ 
 
           my $hub_txt_url = $http_url . "/" . $study_id . "/hub.txt" ;
            
@@ -151,7 +174,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
           foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data , get runs by organism REST call                           
          
                if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
-                   print "there is no such assembly name as $assembly_name in my hash from ensemblgenomes REST call: $rest_call_plants \n";
+                   print " ERROR : there is no such assembly name as $assembly_name in my hash from ensemblgenomes REST call: $rest_call_plants \n";
                    next;
                }
                next if($assName_assAccession{$assembly_name} eq "missing assembly accession"); # i dont need the assembly names if there is no assembly accession as I cannot load the track hub in the Registry without assembly accession
@@ -191,13 +214,18 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
           next if ($assemblyNames_assemblyAccesions_string eq "empty"); # i can't put it in the registry if there is no assembly accession
 
           #print $study_id."\t".$assemblyNames_assemblyAccesions_string."\n";
-          my $output = `perl trackHubRegistry.pl $registry_user_name $registry_pwd $hub_txt_url $study_id $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
-          print $output ;
+          my $output = `perl trackHubRegistry.pl -username $registry_user_name -password $registry_pwd -hub_txt_file_location $hub_txt_url -hub_name $study_id -assembly_name_accession_pairs $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
+          if($output =~ /is Registered/){
+
+                 $line_counter2 ++;
+                 print $line_counter2.". ";
+          }
+
+          print $output;
 
     } #************************************************************************************
 
-
-    print "Robert's REST calls give the following stats:\n";
+    print "\n\nRobert's REST calls give the following stats:\n";
     print "\nThere are " . scalar (keys %runs) ." plant runs completed to date ( $current_date )\n";
     print "\nThere are " .scalar (keys %studies) ." plant studies completed to date ( $current_date )\n";
 
@@ -220,3 +248,12 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
      print "In total there are " .$counter_ens_plants . " Ensembl plants done to date.\n\n";
 
+
+  my $datestring_end = localtime();
+  print " Just finished running the pipeline on:\n";
+  print "Local date and time: $datestring_end\n";
+
+
+  my $total_disc_space_of_track_hubs = `du -sh $ftp_dir_full_path`;
+  
+  print "\ntotal disc space occupied in $ftp_dir_full_path is: $total_disc_space_of_track_hub\n";

@@ -11,16 +11,30 @@
   use MIME::Base64;
   use HTTP::Request::Common;
   use LWP::UserAgent;
+  use Getopt::Long;
 
   my $ua = LWP::UserAgent->new;
 
+
+
 # example call:
 #perl trackHubRegistry.pl etapanari ensemblplants http://www.ebi.ac.uk/~tapanari/data/test/SRP036860/hub.txt SRP036860 JGI2.0,GCA_000002775.2
-  my $username = $ARGV[0];
-  my $pwd = $ARGV[1]; # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
-  my $trackHub_txt_file_url= $ARGV[2];
-  my $hub_name = $ARGV[3];
-  my $assembly_name_accession_pairs = $ARGV[4];
+  my $username ;#= $ARGV[0];
+  my $pwd ;#= $ARGV[1]; # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
+  my $trackHub_txt_file_url ;#= $ARGV[2];
+  my $hub_name ;#= $ARGV[3];
+  my $assembly_name_accession_pairs ;#= $ARGV[4];
+
+ 
+
+  GetOptions(
+     "username=s" => \$username,
+     "password=s" => \$pwd,
+     "hub_txt_file_location=s" => \$trackHub_txt_file_url,
+     "hub_name=s" => \$hub_name,
+     "assembly_name_accession_pairs=s" => \$assembly_name_accession_pairs
+  );
+
 
   my $server = "http://193.62.54.43:3000";
  

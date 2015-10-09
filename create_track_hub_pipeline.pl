@@ -182,7 +182,21 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
            print $fh "bigDataUrl $ftp_location \n"; 
            print $fh "shortLabel ENA:".$run->accession()."\n"; 
            print $fh "longLabel ".$run->title()."; <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
-           print $fh "type bam\n\n";
+           print $fh "type bam\n";
+           print $fh "metadata ";
+           foreach my $key (keys %$run){
+
+             next unless ($key eq "attributes");
+             my @attrib_array= @{$run->{$key}};
+
+             foreach my $attr (@attrib_array){
+               foreach my $key2 (keys %$attr){
+                   print $key2."=".$attr->{$key2}."\t";
+               }
+               #print Dumper ($attr)."\n";
+             }
+           }
+           print "\n\n";
 
          }     
       }

@@ -4,7 +4,7 @@
 # in this script I am getting from array express REST API all studies to date and create my track hubs, or make stats
 
 # example run:
-# perl get_all_studies.pl tapanari testing /homes/tapanari/public_html/data/test  http://www.ebi.ac.uk/~tapanari/data/test
+# perl get_all_studies.pl tapanari testing /homes/tapanari/public_html/data/test2  http://www.ebi.ac.uk/~tapanari/data/test2
 
   use strict ;
   use warnings;
@@ -256,4 +256,4 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
   my $total_disc_space_of_track_hubs = `du -sh $ftp_dir_full_path`;
   
-  print "\ntotal disc space occupied in $ftp_dir_full_path is: $total_disc_space_of_track_hub\n";
+  print "\ntotal disc space occupied in $ftp_dir_full_path is: $total_disc_space_of_track_hubs\n";

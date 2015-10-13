@@ -16,7 +16,7 @@ Parameters:
 
 Example run:
 
-perl get_all_studies.pl -username <my_username> -password <my_password> -local_ftp_dir_path <my_path_to_the_track_hub_dir>  -http_url <my_http_url_of_the_track_hub_files>
+perl get_all_studies.pl -username my_username -password my_password -local_ftp_dir_path my_path_to_the_track_hub_dir  -http_url my_http_url_of_the_track_hub_files
 
 The pipeline workflow:
 

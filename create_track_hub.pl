@@ -51,7 +51,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
   }else{
 
       my ($status, $reason) = ($response->{status}, $response->{reason}); #LWP perl library for dealing with http
-      print "create_track_hub_pipeline.pl script gave an ERROR: ";
+      print "create_track_hub_pipeline.pl gave ERROR: ";
       print STDERR "Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200" reason "OK"
       return 0;
   }

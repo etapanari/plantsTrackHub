@@ -227,7 +227,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
           next if ($assemblyNames_assemblyAccesions_string eq "empty"); # i can't put it in the registry if there is no assembly accession
 
           #print $study_id."\t".$assemblyNames_assemblyAccesions_string."\n";
-          my $output = `perl trackHubRegistry.pl -username $registry_user_name -password $registry_pwd -hub_txt_file_location $hub_txt_url -hub_name $study_id -assembly_name_accession_pairs $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
+          my $output = `perl register_track_hub.pl -username $registry_user_name -password $registry_pwd -hub_txt_file_location $hub_txt_url -hub_name $study_id -assembly_name_accession_pairs $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
           if($output =~ /is Registered/){
 
                  $line_counter2 ++;

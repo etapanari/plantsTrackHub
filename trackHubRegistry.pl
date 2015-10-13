@@ -19,11 +19,12 @@
 
 # example call:
 #perl trackHubRegistry.pl etapanari ensemblplants http://www.ebi.ac.uk/~tapanari/data/test/SRP036860/hub.txt SRP036860 JGI2.0,GCA_000002775.2
-  my $username ;#= $ARGV[0];
-  my $pwd ;#= $ARGV[1]; # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
-  my $trackHub_txt_file_url ;#= $ARGV[2];
-  my $hub_name ;#= $ARGV[3];
-  my $assembly_name_accession_pairs ;#= $ARGV[4];
+
+  my $username ;
+  my $pwd ;  # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
+  my $trackHub_txt_file_url ;
+  my $hub_name ;
+  my $assembly_name_accession_pairs ;
 
  
 
@@ -83,12 +84,13 @@
        $response = $ua->request($request);
        $response_code= $response->code;
        print "$hub_name is Registered\n" and last if $response_code == 201;
-       printf "%s\t%d\t%s\n", $hub_name, $response->code, from_json($response->content)->{error} and last if $response_code < 500;
+       printf STDERR "%s\t%d\t%s\n", $hub_name, $response->code, from_json($response->content)->{error} and last if $response_code < 500;
        print "\n";
      }
   } else {
-    print "$assembly_name_accession_pairs , ";
-    printf "%s\t%d\t%s\n", $hub_name, $response->code, from_json($response->content)->{error};
+    print STDERR "trackHubRegistry.pl script gave an ERROR: ";
+    print STDERR "$assembly_name_accession_pairs , ";
+    printf STDERR "%s\t%d\t%s\n", $hub_name, $response->code, from_json($response->content)->{error};
   } 
 
 

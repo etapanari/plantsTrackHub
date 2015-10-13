@@ -68,5 +68,5 @@
     }
     
   } else {
-    print STDERR "delete_registered_trackhubs.pl ERRPR : Couldn't get list of trackhubs: %d", $response->{code};
+    print STDERR "delete_registered_trackhubs.pl ERROR : Couldn't get list of trackhubs: %d", $response->{code};
   }

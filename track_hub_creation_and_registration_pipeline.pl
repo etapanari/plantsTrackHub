@@ -167,7 +167,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
           $line_counter ++;
           print "$line_counter.\tcreating track hub for study $study_id\n";
-         `perl create_track_hub_pipeline.pl -study_id $study_id -local_ftp_dir_path $ftp_dir_full_path -http_url $http_url` ; # here I create for every study a track hub *********************
+         `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_dir_full_path -http_url $http_url` ; # here I create for every study a track hub *********************
    }
 
    my $datestring2 = localtime();

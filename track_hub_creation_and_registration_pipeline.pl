@@ -40,29 +40,70 @@
   # i want 01-10-2015
 
   my @words = split(/-/, $date_wrong_order);
-  my $current_date = $words[2] . "-". $words[1]. "-". $words[0];  # now it is 01-10-2015 (1st October)
+  my $current_date = $words[2] . "-". $words[1]. "-". $words[0];  # ie 01-10-2015 (1st October)
 
 
-  my $datestring = localtime();
-  print " Just started running the pipeline on:\n";
-  print "Local date and time: $datestring\n";
+  my $date_string = localtime();
+  print "* Started running the pipeline on:\n";
+  print "Local date,time: $date_string\n";
 
 
-  print "\nI am using this ftp server to make my track hubs:\n $http_url\n\n";
-  print "I am using this Registry account:\n user:$registry_user_name \n password: $registry_pwd\n\n ";
+  print "\n* Ran this pipeline:\n\n";
+  print "perl get_all_studies.pl -username $registry_user_name -password $registry_pwd -local_ftp_dir_path $ftp_dir_full_path  -http_url $http_url\n";
+
+  print "\n* I am using this ftp server to eventually build my track hubs:\n\n $http_url\n\n";
+  print "* I am using this Registry account:\n\n user:$registry_user_name \n password: $registry_pwd\n\n ";
 
   print "\n ******** deleting all track hubs registered in the Registry under my account\n\n";  
   my $delete_script_output = `perl delete_registered_trackhubs.pl -username $registry_user_name -password $registry_pwd` ; 
   print $delete_script_output;
 
+  if (! -e $ftp_dir_full_path ){  # if the directory does not exist, make it
+
+   print "directory \'$ftp_dir_full_path\' does not exist, I will make it now..\n\n";
+
+    `mkdir $ftp_dir_full_path`; 
+
+     if($? !=0){
+ 
+          die "I could not create directory \'$ftp_dir_full_path\'\n";
+
+     }else{
+          print "Successfully created directory \'$ftp_dir_full_path\'\n";
+     }
+
+  }
+
   print "\n ******** deleting everything in directory $ftp_dir_full_path\n\n";
- `rm -r $ftp_dir_full_path/*`;  # removing also the actual track hub files in the ftp server
+
+
+  my $ls_output = `ls $ftp_dir_full_path`  ;
+
   if($? !=0){
  
-          print STDERR "failed to remove the dir\n";
-  }else{
-          print "deletion successful\n";
+      die "I cannot see contents of $ftp_dir_full_path (ls failed)\n";
+
   }
+
+  if(!$ls_output){  # check if there are files inside the directory
+
+     print "Directory $ftp_dir_full_path is empty - No need for deletion\n";
+
+   } else{ # directory is not empty
+
+      `rm -r $ftp_dir_full_path/*`;  # removing the track hub files in the ftp server
+
+      if($? !=0){
+ 
+          print STDERR "ERROR in: track_hub_creation_and_registration_pipeline.pl failed to remove contents of dir $ftp_dir_full_path\n";
+
+      }else{
+
+          print "Successfully deleted all content of $ftp_dir_full_path\n";
+      }
+
+   }
+ 
 
 sub getJsonResponse { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
 
@@ -114,17 +155,6 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
   }
 
-#   foreach my $asse_name (keys %assName_assAccession) {
-# 
-#        foreach my $plant (keys %{$assName_assAccession{$asse_name}}){
-# 
-#              print $plant . "\t". $asse_name . "\t". $assName_assAccession{$asse_name}{$plant}."\n";
-#        }
-#   }
-# 
-# 
-#   __END__
-
     my $get_runs_by_organism_endpoint="http://plantain:3000/eg/getLibrariesByOrganism/"; # i get all the runs by organism to date
 
     my %robert_plants_done;
@@ -170,9 +200,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
          `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_dir_full_path -http_url $http_url` ; # here I create for every study a track hub *********************
    }
 
-   my $datestring2 = localtime();
+   my $date_string2 = localtime();
    print " \nJust finished creating the files and directories of the track hubs in the server on:\n";
-   print "Local date and time: $datestring2\n";
+   print "Local date and time: $date_string2\n";
 
     print "\n***********************************\n\n";
 
@@ -187,7 +217,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
           foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data , get runs by organism REST call                           
          
                if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
-                   print STDERR " ERROR : there is no such assembly name as $assembly_name in my hash from ensemblgenomes REST call: $rest_call_plants \n";
+                   print STDERR " ERROR : there is no assembly name \'$assembly_name\' in my hash from ensemblgenomes REST call: $rest_call_plants \n";
                    next;
                }
                next if($assName_assAccession{$assembly_name} eq "missing assembly accession"); # i dont need the assembly names if there is no assembly accession as I cannot load the track hub in the Registry without assembly accession
@@ -226,7 +256,6 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
           next if ($assemblyNames_assemblyAccesions_string eq "empty"); # i can't put it in the registry if there is no assembly accession
 
-          #print $study_id."\t".$assemblyNames_assemblyAccesions_string."\n";
           my $output = `perl register_track_hub.pl -username $registry_user_name -password $registry_pwd -hub_txt_file_location $hub_txt_url -hub_name $study_id -assembly_name_accession_pairs $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
           if($output =~ /is Registered/){
 
@@ -262,11 +291,11 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
      print "In total there are " .$counter_ens_plants . " Ensembl plants done to date.\n\n";
 
 
-  my $datestring_end = localtime();
-  print " Just finished running the pipeline on:\n";
-  print "Local date and time: $datestring_end\n";
+  my $date_string_end = localtime();
+  print " Finished running the pipeline on:\n";
+  print "Local date,time: $date_string_end\n";
 
 
   my $total_disc_space_of_track_hubs = `du -sh $ftp_dir_full_path`;
   
-  print "\ntotal disc space occupied in $ftp_dir_full_path is: $total_disc_space_of_track_hubs\n";
+  print "\ntotal disc space occupied in $ftp_dir_full_path is:\n $total_disc_space_of_track_hubs\n";

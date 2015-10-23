@@ -1,6 +1,3 @@
-# before I run I set up my PERL5LIB doing 2 things:  ********************************************************
-# PERL5LIB=/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
-# source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
 
 # input : STUDY_ID local_directory_path server_url
 # output : a trackhub (bunch of directories and files) on your server
@@ -181,6 +178,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 #longLabel Illumina Genome Analyzer IIx sequencing; GSM1321742: s1061_16C; Arabidopsis thaliana; RNA-Seq; <a href="http://www.ebi.ac.uk/ena/data/view/SRR1161753">SRR1161753</a>
 #type bam
 
+   my %done_runs; # i have to store the run_id in this hash as there was an occassion where different samples had the same run_id and then the same run was multiple times in the trackDb.txt file (as track) which is not valid by UCSC
 
    foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of the study (if there is more than 1 assembly for a given study), I create a trackDb.txt file
 
@@ -192,15 +190,15 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
         open(my $fh, '>', $trackDb_txt_file) or die "Could not open file '$trackDb_txt_file' $!";
 
-         my @samples=@{ $study->samples()};
+         my @samples=@{ $study->samples()};  # usually 1 study has more than 1 samples
 
          for my $sample ( @{ $study->samples() } ) { # I print the sample attributes here
 
 
              my @attrib_array_sample; 
 
-             if(ref($sample->{"attributes"}) eq "HASH"){ # I am doing this because I found an occassion where the $sample->{"attributes"} is a HASH and not an array, in study ERP009119
-
+             if(ref($sample->{"attributes"}) eq "HASH"){ # I am doing this because I found an occassion where the $sample->{"attributes"} is a HASH and not an array, in study ERP009119 its samples that have this are ERS747134 and ERS747135
+                # the hash has only 2 keys, TAG and VALUE , so these 2 samples have only 1 attribute each.
 
                  push(@attrib_array_sample ,$sample->{"attributes"} );
                   
@@ -208,16 +206,23 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
                  @attrib_array_sample= @{$sample->{"attributes"}}; # i get this: Not an ARRAY reference at create_track_hub.pl
              }
+
              my @experiments =@{$sample->experiments()};
 
-
-             foreach my $experiment (@experiments){
+             foreach my $experiment (@experiments){  # each sample can have 1,2 or more experiments ; most have 1 or 2 but some can have more than 100
 
                 my @attrib_array_experiment= @{$experiment->{"attributes"}};
-                my @runs =@{$experiment->runs()};
-
+                my @runs= @{$experiment->runs()}; # each experiment can have 1, 2 or more runs ; usually there are 1 or 2 runs per experiment
+              
  
                 foreach my $run (@runs){
+
+                  if($done_runs {$run->accession()}{$assembly_name}){  # i do this check because i want to print every run once in the trackDb.txt file. see line 181
+                        next;
+                  }else{
+
+                    $done_runs {$run->accession()}{$assembly_name} =1;
+                  }
 
                   next unless ($run_id_location{$run->accession()}); # if Robert's API call did not return this run id then I won't use it
                   next unless ($run_assembly{$run->accession} eq $assembly_name ); 
@@ -291,11 +296,12 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
                      }
                   }
                   print $fh "\n\n";
-              }
 
-        }
+              } #end of foreach run
 
-    }
+        } # end of for each experiment 
+
+    } # end of for each sample
 
  
 # groups.txt content:

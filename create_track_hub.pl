@@ -6,7 +6,7 @@
 # output : a trackhub (bunch of directories and files) on your server
 
 # how to call it:
-# perl create_track_hub_pipeline.pl -study_id SRP036860 -local_ftp_dir_path /homes/tapanari/public_html/data/test -http_url http://www.ebi.ac.uk/~tapanari/data/test
+# perl create_track_hub.pl -study_id SRP036860 -local_ftp_dir_path /homes/tapanari/public_html/data/test -http_url http://www.ebi.ac.uk/~tapanari/data/test
 
   use strict ;
   use warnings;
@@ -75,7 +75,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
          my %hash = %{$hash_ref};
 
-         $robert_plant_names{ $hash{"ORGANISM"} }=1;
+         $robert_plant_names{ $hash{"ORGANISM"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://plantain:3000/eg/getOrganisms/plants
         
      }
 
@@ -98,9 +98,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
          my %hash = %{$hash_ref};
 
-         if($hash{"STATUS"} eq "Complete" and $robert_plant_names{$hash {"ORGANISM"}}) { # i want to use only the "complete" runs and plants only
+         if($hash{"STATUS"} eq "Complete" and $robert_plant_names{$hash {"ORGANISM"}}) { # i want to use only the "complete" runs and *plants* only, a study could have 2 species ie a plant and a non-plant
 
-            $assembly_names{$hash{"ASSEMBLY_USED"}} = 1; # I store the value of the $hash{"ASSEMBLY_USED"} ie the "TAIR10" as a key in my hash %assembly_names
+            $assembly_names{$hash{"ASSEMBLY_USED"}} = 1; # I store the assembly name ie the "TAIR10"
             $run_id_location{$hash{"RUN_ID"}}= $hash{"FTP_LOCATION"}; 
             $run_assembly { $hash{"RUN_ID"} } = $hash{"ASSEMBLY_USED"};
             $run_robert_species_name {$hash{"RUN_ID"}} = $hash {"ORGANISM"};
@@ -131,19 +131,30 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
       my @studies =@{$study_adaptor->get_by_accession($study_id)}; # i am expecting to return 1 study object
 
-      foreach my $study (@studies){
+      if (scalar @studies >1){
+ 
+           print STDERR "ERROR in create_track_hub.pl script: I get more than 1 study object from ENA using study id $study_id\n" ;
+      }
+
+      foreach my $study (@studies){ # it should be only 1 study
 
 	  open(my $fh, '>', $hub_txt_file) or die "Could not open file '$hub_txt_file' $!";
 
 	  print $fh "hub ".$study->accession."\n"; 
 	  print $fh "shortLabel "."RNA-seq alignment hub ".$study->accession."\n"; 
-	  print $fh "longLabel ".$study->title." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study->accession."\">".$study->accession."</a>"."\n";
+          my $long_label = "longLabel ".$study->title." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study->accession."\">".$study->accession."</a>"."\n";
+#           if($long_label=~/[^\x00-\xFF]/){
+#              print STDERR "$study_id has non-ASCII characters in the long label of the hub.txt file in line 143\n";
+# 	     print $fh "NON-ASCII? ".$long_label;
+#           }else{
+	  print $fh $long_label;
+#          }
 	  print $fh "genomesFile genomes.txt\n";
 	  print $fh "email tapanari\@ebi.ac.uk\n";
       
       }
 
-#genomes.txt content (for an assembly hub - for a track hub you only need genome and trackDb lines):
+#genomes.txt content 
 
 # genome IWGSC1.0+popseq
 # trackDb IWGSC1.0+popseq/trackDb.txt
@@ -156,7 +167,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
         open(my $fh, '>', $genomes_txt_file) or die "Could not open file '$genomes_txt_file' $!";
 
 
-   foreach my $assembly_name (keys %assembly_names){
+   foreach my $assembly_name (keys %assembly_names){ # I create a stanza for every assembly
 
         print $fh "genome ".$assembly_name."\n"; 
         print $fh "trackDb ".$assembly_name."/trackDb.txt"."\n\n"; 
@@ -171,19 +182,32 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 #type bam
 
 
-   foreach my $assembly_name (keys %assembly_names){
+   foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of the study (if there is more than 1 assembly for a given study), I create a trackDb.txt file
 
        my $trackDb_txt_file="$ftp_dir_full_path/$study_id/$assembly_name/trackDb.txt";
 
        `touch $trackDb_txt_file`;       ########################################  I MAKE THE trackDb.txt FILE IN EVERY ASSEMBLY FOLDER
 
-       foreach my $study (@studies){ # this is basically 1 study- I get it using the study id
+        my $study= $studies[0]; # this is basically 1 study- I get it using the study id, I can get the first element of the array
 
-         open(my $fh, '>', $trackDb_txt_file) or die "Could not open file '$trackDb_txt_file' $!";
+        open(my $fh, '>', $trackDb_txt_file) or die "Could not open file '$trackDb_txt_file' $!";
+
+         my @samples=@{ $study->samples()};
 
          for my $sample ( @{ $study->samples() } ) { # I print the sample attributes here
 
-             my @attrib_array_sample= @{$sample->{"attributes"}};
+
+             my @attrib_array_sample; 
+
+             if(ref($sample->{"attributes"}) eq "HASH"){ # I am doing this because I found an occassion where the $sample->{"attributes"} is a HASH and not an array, in study ERP009119
+
+
+                 push(@attrib_array_sample ,$sample->{"attributes"} );
+                  
+             }else{
+
+                 @attrib_array_sample= @{$sample->{"attributes"}}; # i get this: Not an ARRAY reference at create_track_hub.pl
+             }
              my @experiments =@{$sample->experiments()};
 
 
@@ -196,15 +220,27 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
                 foreach my $run (@runs){
 
                   next unless ($run_id_location{$run->accession()}); # if Robert's API call did not return this run id then I won't use it
-                  next unless ($run_assembly{$run->accession} eq $assembly_name );
+                  next unless ($run_assembly{$run->accession} eq $assembly_name ); 
            
                   my $ftp_location = $run_id_location{$run->accession};
                   my $species_name = $run_robert_species_name {$run->accession};
 
                   print $fh "track ". $run->accession()."\n"; 
                   print $fh "bigDataUrl $ftp_location \n"; 
-                  print $fh "shortLabel ENA:".$run->accession()."\n"; 
-                  print $fh "longLabel ".$run->title()."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
+                  my $short_label_ENA="shortLabel ENA:".$run->accession()."\n";
+#           if($short_label_ENA=~/[^\x00-\xFF]/){
+#              print STDERR "$study_id has non-ASCII characters in the short label of the trackDb.txt file in line 215\n";
+# 	     print $fh "NON-ASCII? ".$short_label_ENA;
+#           }else{
+	  print $fh $short_label_ENA;
+#          }
+                  my $long_label_ENA = "longLabel ".$run->title()."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
+#           if($long_label_ENA=~/[^\x00-\xFF]/){
+#              print STDERR "$study_id has non-ASCII characters in the long label of the trackDb.txt file in line 222\n";
+# 	     print $fh "NON-ASCII? ".$long_label_ENA;
+#           }else{
+	  print $fh $long_label_ENA;
+#          }
                   print $fh "type bam\n";
                   print $fh "metadata species=$species_name ";
 
@@ -215,7 +251,14 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
                      my @array = split(/ /, $value);
 
                      if (scalar @array > 1) {
-                        print $fh "sample:".$attr_sample->{"TAG"}."=\"".$attr_sample->{"VALUE"}."\" ";  # i want to have "" in values that are more than 1 word , ie: sample:source_name="young leaves from Kn1-N heterozygote"
+                        my $string = "sample:".$attr_sample->{"TAG"}."=\"".$attr_sample->{"VALUE"}."\" ";  ##########non - ASCII? 
+#           if($string=~/[^\x00-\xFF]/){
+#              print STDERR "$study_id has non-ASCII characters in the metadata of the trackDb.txt file in line 239\n";
+# 	     print $fh "NON-ASCII? ".$string;
+#           }else{
+	  print $fh $string;
+#          }
+                 #print $fh $string  # i want to have "" in values that are more than 1 word , ie: sample:source_name="young leaves from Kn1-N heterozygote"
                      }else{
                         print $fh "sample:".$attr_sample->{"TAG"}."=".$attr_sample->{"VALUE"}." ";
                      }
@@ -253,10 +296,6 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
         }
 
     }
-
-
-              
-      }
 
  
 # groups.txt content:

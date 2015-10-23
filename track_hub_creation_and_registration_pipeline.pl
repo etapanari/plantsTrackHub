@@ -1,10 +1,13 @@
+# before I run I set up my PERL5LIB doing 2 things:  ********************************************************
+# PERL5LIB=/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
+# source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
 
 # it needs before run:
 # # source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
 # in this script I am getting from array express REST API all studies to date and create my track hubs, or make stats
 
 # example run:
-# perl get_all_studies.pl -username tapanari -password testing -local_ftp_dir_path /homes/tapanari/public_html/data/test2  -http_url http://www.ebi.ac.uk/~tapanari/data/test2
+# perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /homes/tapanari/public_html/data/test2  -http_url http://www.ebi.ac.uk/~tapanari/data/test2 > output
 
   use strict ;
   use warnings;
@@ -19,12 +22,15 @@
   my $ftp_dir_full_path ; #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
   my $http_url ;  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
 
+  my $register_only; 
+
 
   GetOptions(
      "username=s" => \$registry_user_name ,
      "password=s" => \$registry_pwd,
      "local_ftp_dir_path=s" => \$ftp_dir_full_path,
-     "http_url=s" => \$http_url
+     "http_url=s" => \$http_url,   #string
+     "register_only"  => \$register_only # flag
   );
    
   my $server =  "http://plantain:3000/eg"; #or could be $ARGV[2]; # Robert's server where he stores his REST URLs
@@ -52,12 +58,14 @@
   print "perl get_all_studies.pl -username $registry_user_name -password $registry_pwd -local_ftp_dir_path $ftp_dir_full_path  -http_url $http_url\n";
 
   print "\n* I am using this ftp server to eventually build my track hubs:\n\n $http_url\n\n";
-  print "* I am using this Registry account:\n\n user:$registry_user_name \n password: $registry_pwd\n\n ";
+  print "* I am using this Registry account:\n\n user:$registry_user_name \n password:$registry_pwd\n\n ";
+
 
   print "\n ******** deleting all track hubs registered in the Registry under my account\n\n";  
   my $delete_script_output = `perl delete_registered_trackhubs.pl -username $registry_user_name -password $registry_pwd` ; 
   print $delete_script_output;
 
+ 
   if (! -e $ftp_dir_full_path ){  # if the directory does not exist, make it
 
    print "directory \'$ftp_dir_full_path\' does not exist, I will make it now..\n\n";
@@ -74,6 +82,7 @@
 
   }
 
+  if(!$register_only) {
   print "\n ******** deleting everything in directory $ftp_dir_full_path\n\n";
 
 
@@ -104,6 +113,7 @@
 
    }
  
+}
 
 sub getJsonResponse { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
 
@@ -191,6 +201,8 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
     my $line_counter = 0;
 
+  if(!$register_only) {
+
   print "\n ******** starting to make directories and files for the track hubs in the ftp server: $http_url\n\n";
 
     foreach my $study_id (keys %studyId_assemblyName){ 
@@ -201,11 +213,11 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
    }
 
    my $date_string2 = localtime();
-   print " \nJust finished creating the files and directories of the track hubs in the server on:\n";
-   print "Local date and time: $date_string2\n";
+   print " \n Finished creating the files,directories of the track hubs on the server on:\n";
+   print "Local date,time: $date_string2\n";
 
     print "\n***********************************\n\n";
-
+}
     my $line_counter2 = 0;
 
     foreach my $study_id (keys %studyId_assemblyName){ 
@@ -217,7 +229,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
           foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data , get runs by organism REST call                           
          
                if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
-                   print STDERR " ERROR : there is no assembly name \'$assembly_name\' in my hash from ensemblgenomes REST call: $rest_call_plants \n";
+                   print STDERR "ERROR: study $study_id will not be Registered as there is no assembly name \'$assembly_name\' (Robert's call) of study $study_id in my hash from ensemblgenomes REST call: $rest_call_plants \n";
                    next;
                }
                next if($assName_assAccession{$assembly_name} eq "missing assembly accession"); # i dont need the assembly names if there is no assembly accession as I cannot load the track hub in the Registry without assembly accession
@@ -280,6 +292,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
             if($ens_plant_names {$plant}){
                $counter_ens_plants++;
+               print " * " ;
             }
             $index++;
             print $index.". ".$plant." =>\t". $robert_plants_done{$plant}." runs / ". scalar ( keys ( %{$robert_plant_study{$plant}} ) )." studies\n";

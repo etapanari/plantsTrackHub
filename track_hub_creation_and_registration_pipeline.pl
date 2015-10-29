@@ -2,9 +2,8 @@
 # PERL5LIB=/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
 # source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
 
-# it needs before run:
-# # source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
-# in this script I am getting from array express REST API all studies to date and create my track hubs, or make stats
+# or simply:
+#PERL5LIB=/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-variation/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-rest/lib:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-production/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-pipeline/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-hive/modules:/nfs/production/panda/ensemblgenomes/development/tapanari/ensemblgenomes-api/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-funcgen/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-compara/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-analysis/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl/modules:/nfs/production/panda/ensemblgenomes/apis/bioperl/run-stable:/nfs/production/panda/ensemblgenomes/apis/bioperl/stable:/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
 
 # example run:
 # perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /homes/tapanari/public_html/data/test2  -http_url http://www.ebi.ac.uk/~tapanari/data/test2 > output
@@ -30,7 +29,8 @@
      "password=s" => \$registry_pwd,
      "local_ftp_dir_path=s" => \$ftp_dir_full_path,
      "http_url=s" => \$http_url,   #string
-     "register_only"  => \$register_only # flag
+     "register_only"  => \$register_only# flag
+
   );
    
   my $server =  "http://plantain:3000/eg"; #or could be $ARGV[2]; # Robert's server where he stores his REST URLs
@@ -141,6 +141,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
   my @array_response_plants_assemblies = @{getJsonResponse($rest_call_plants)};  
 
   my %assName_assAccession;
+  my %assAccession_assName;
   my %ens_plant_names;
 
 # response:
@@ -153,15 +154,16 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
          my %hash = %{$hash_ref};
 
+         $ens_plant_names {$hash {"species"}} = 1;
+
          if(! $hash{"assembly_id"}){  # some species don't have assembly id, ie assembly accession
 
              $assName_assAccession  {$hash{"assembly_name"}} =  "missing assembly accession";
-             $ens_plant_names {$hash {"species"}} = 1;
              next;
          }
 
          $assName_assAccession  {$hash{"assembly_name"} } = $hash{"assembly_id"};
-         $ens_plant_names {$hash {"species"}} = 1;
+         $assAccession_assName  {$hash{"assembly_id"} } = $hash{"assembly_name"};
 
   }
 
@@ -228,6 +230,8 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
       
           foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data , get runs by organism REST call                           
          
+               $assembly_name = getRightAssemblyName($assembly_name);
+
                if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
                    print STDERR "ERROR: study $study_id will not be Registered as there is no assembly name \'$assembly_name\' (Robert's call) of study $study_id in my hash from ensemblgenomes REST call: $rest_call_plants \n";
                    next;
@@ -312,3 +316,25 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
   my $total_disc_space_of_track_hubs = `du -sh $ftp_dir_full_path`;
   
   print "\ntotal disc space occupied in $ftp_dir_full_path is:\n $total_disc_space_of_track_hubs\n";
+
+sub getRightAssemblyName { # this method returns the right assembly name in the cases where Robert takes the assembly accession instead of the assembly name due to our bug
+
+   my $assembly_string = shift;
+   my $assembly_name;
+
+
+   if (!$assName_assAccession{$assembly_string}){
+
+        if(!$assAccession_assName{$assembly_string}) {  # solanum_tuberosum has a wrong assembly.default it's neither the assembly.name nor the assembly.accession BUT : "assembly_name":"SolTub_3.0" and "assembly_id":"GCA_000226075.1"
+
+           $assembly_name = $assembly_string
+ 
+        }else{
+           $assembly_name = $assAccession_assName{$assembly_string};
+        }
+   }else{
+        $assembly_name = $assembly_string;
+   }
+   return $assembly_name;
+
+}

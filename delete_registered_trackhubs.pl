@@ -16,7 +16,7 @@
   my $ua = LWP::UserAgent->new;
 
 # example call:
-#perl trackHubRegistry.pl -username etapanari -password ensemblplants 
+#perl delete_registered_trackhubs.pl -username etapanari -password ensemblplants >output
 
   my $username ;
   my $pwd ; # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants/ testing

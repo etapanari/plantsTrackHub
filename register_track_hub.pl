@@ -18,7 +18,7 @@
 
 
 # example call:
-#perl trackHubRegistry.pl etapanari ensemblplants http://www.ebi.ac.uk/~tapanari/data/test/SRP036860/hub.txt SRP036860 JGI2.0,GCA_000002775.2
+#perl trackHubRegistry.pl -username etapanari -password ensemblplants -hub_txt_file_location http://www.ebi.ac.uk/~tapanari/data/test/SRP036860/hub.txt -hub_name SRP036860 -assembly_name_accession_pairs JGI2.0,GCA_000002775.2
 
   my $username ;
   my $pwd ;  # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
@@ -38,7 +38,7 @@
 
 
   my $server = "http://193.62.54.43:3000";
- 
+
   my $endpoint = '/api/login';
   my $url = $server.$endpoint; 
   my $request = GET($url) ;
@@ -48,7 +48,8 @@
   my $response = $ua->request($request);
 
   my $auth_token = from_json($response->content)->{auth_token};
-  
+  die "Unable to login" unless defined $auth_token;
+
   $url = $server . '/api/trackhub';
 
   my $eg_server = "http://rest.ensemblgenomes.org";
@@ -61,14 +62,17 @@
     $assemblies->{$words[$i]} = $words[$i+1];
   }
 
-  $request = POST($url,
-		  'Content-type' => 'application/json',
-		                                                                         #  assemblies => { "$assembly_name" => "$assembly_accession" } }));
-		  'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies }));
+  $| = 1;
+
+  $request = 
+    POST($url,
+	 'Content-type' => 'application/json',
+	 #  assemblies => { "$assembly_name" => "$assembly_accession" } }));
+	 'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies }));
   $request->headers->header(user => $username);
   $request->headers->header(auth_token => $auth_token);
-
   $response = $ua->request($request);
+  # print Dumper $response;
 
   my $response_code= $response->code;
 
@@ -78,19 +82,21 @@
 
   } elsif($response_code == 503 or $response_code == 500) {
 
-     for(my $i=0; $i<10; $i++) {
-       printf "\n%s\t%d\t%s. $i retrying attempt: Retrying after 5s...", $hub_name, $response->code, from_json($response->content)->{error};
+     for(my $i=1; $i<=10; $i++) {
+
+       printf "\n%s\t%d\t%s. $i retrying attempt: Retrying after 5s...", $hub_name, $response->code, $response->content;
        sleep 5;
        $response = $ua->request($request);
        $response_code= $response->code;
        print "$hub_name is Registered\n" and last if $response_code == 201;
-       printf STDERR "%s\t%d\t%s\n", $hub_name, $response->code, from_json($response->content)->{error} and last if $response_code < 500;
+       printf STDERR "%s\t%d\t%s\n", $hub_name, $response->code, $response->content and last if $response_code < 500;
        print "\n";
      }
+
   } else {
-    print STDERR "trackHubRegistry.pl script gave an ERROR: ";
+    print STDERR "ERROR: register_track_hub.pl ";
     print STDERR "$assembly_name_accession_pairs , ";
-    printf STDERR "%s\t%d\t%s\n", $hub_name, $response->code, from_json($response->content)->{error};
+    printf STDERR "%s\t%d\t%s\n", $hub_name, $response->code, $response->content;
   } 
 
 

@@ -7,10 +7,7 @@
 
   use strict ;
   use warnings;
-  use Data::Dumper;
-
   use HTTP::Tiny;
-  use Time::HiRes;
   use JSON;
   use Getopt::Long;
 
@@ -27,7 +24,7 @@
      "http_url=s" => \$url_root
   );
 
-  my $server =  "http://plantain:3000/eg"; #or could be $ARGV[3]; # Robert's server where he stores his REST URLs
+  my $server =  "http://plantain:3000/eg"; # Robert's server where he stores his REST URLs
 
   my $http = HTTP::Tiny->new();
 
@@ -40,52 +37,31 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
   if($response->{success} ==1) { # if the response is successful then I get 1
 
-    my $content=$response->{content};      #print $response->{content}."\n"; # it prints whatever is the content of the URL, ie the jason response
-    my $json = decode_json($content); # it returns an array reference 
+     my $content=$response->{content};     
+     my $json = decode_json($content); # it returns an array reference 
 
-    return $json;
+     return $json;
 
   }else{
 
       my ($status, $reason) = ($response->{status}, $response->{reason}); #LWP perl library for dealing with http
       print "create_track_hub_pipeline.pl gave ERROR: ";
-      print STDERR "Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200" reason "OK"
+      print STDERR "Failed to get response for REST call: $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200" reason "OK"
       return 0;
   }
 
 }
 
+     my %robert_plant_names = %{getPlantNamesArrayExpressAPI()}; 
 
-    my $get_plant_roberts_plant_names_endpoint = "/getOrganisms/plants" ;
-    my $get_plant_names_url= $server . $get_plant_roberts_plant_names_endpoint; # i get all organism names that robert uses for plants to date
+     my $get_runs_from_study_url= $server . "/getLibrariesByStudyId/$study_id"; # i get all the runs of the study
+    
+     my @runs_response=@{getJsonResponse($get_runs_from_study_url)};  # i call here the method that I made above
 
-    my %robert_plant_names;
-
-#response:
-#[{"ORGANISM":"arabidopsis_thaliana"},{"ORGANISM":"brassica_rapa"},{"ORGANISM":"hordeum_vulgare"},{"ORGANISM":"hordeum_vulgare_subsp._vulgare"},
-#{"ORGANISM":"medicago_truncatula"},{"ORGANISM":"oryza_sativa"},{"ORGANISM":"oryza_sativa_japonica_group"},{"ORGANISM":"physcomitrella_patens"},
-#{"ORGANISM":"populus_trichocarpa"},{"ORGANISM":"sorghum_bicolor"},{"ORGANISM":"triticum_aestivum"},{"ORGANISM":"vitis_vinifera"},{"ORGANISM":"zea_mays"}]
-
-     my @plant_names_response = @{getJsonResponse($get_plant_names_url)};  # i call here the method that I made above
-
-     foreach my $hash_ref (@plant_names_response){
-
-         my %hash = %{$hash_ref};
-
-         $robert_plant_names{ $hash{"ORGANISM"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://plantain:3000/eg/getOrganisms/plants
-        
-     }
-
-
-
-    my $get_runs_from_study_url= $server . "/getLibrariesByStudyId/$study_id"; # i get all the runs of the study
-   
-    my @runs_response=@{getJsonResponse($get_runs_from_study_url)};  # i call here the method that I made above
-
-    my %assembly_names; #  it stores all distinct assembly names for a given study
-    my %run_id_location; # it stores as key the run id and value the location in the ftp server of arrayexpress
-    my %run_assembly; #  it stores as key the run id and value the assembly name 
-    my %run_robert_species_name;
+     my %assembly_names; #  it stores all distinct assembly names for a given study
+     my %run_id_location; # it stores as key the run id and value the location in the ftp server of arrayexpress
+     my %run_assembly; #  it stores as key the run id and value the assembly name 
+     my %run_robert_species_name;
 
 # a line of this call:  http://plantain:3000/eg/getLibrariesByStudyId/SRP033494
 #[{"STUDY_ID":"SRP033494","SAMPLE_ID":"SAMN02434874","RUN_ID":"SRR1042754","ORGANISM":"arabidopsis_thaliana","STATUS":"Complete","ASSEMBLY_USED":"TAIR10","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:11:03",
@@ -104,9 +80,42 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
          }
      }
 
+    my $rest_call_plants = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
+
+    my @array_response_plants_assemblies = @{getJsonResponse($rest_call_plants)};  
+
+# response:
+#[{"base_count":"479985347","is_reference":null,"division":"EnsemblPlants","has_peptide_compara":"1","dbname":"physcomitrella_patens_core_28_81_11","genebuild":"2011-03-JGI","assembly_level":"scaffold","serotype":null,
+#"has_pan_compara":"1","has_variations":"0","name":"Physcomitrella patens","has_other_alignments":"1","species":"physcomitrella_patens","assembly_name":"ASM242v1","taxonomy_id":"3218","species_id":"1",
+#"assembly_id":"GCA_000002425.1","strain":"ssp. patens str. Gransden 2004","has_genome_alignments":"1","species_taxonomy_id":"3218"},
+
+    my %assName_assAccession ;
+    my %assAccession_assName;
+
+    foreach my $hash_ref (@array_response_plants_assemblies){
+
+         my %hash = %{$hash_ref};
+
+         if(! $hash{"assembly_id"}){  # some species don't have assembly id, ie assembly accession; it is basically wheat (triticum_aestivum), oryza_longistaminata and oryza_rufipogon that don't have assembly accession
+
+             $assName_assAccession  {$hash{"assembly_name"}} =  "missing assembly accession";
+             next;
+         }
+
+         $assName_assAccession  {$hash{"assembly_name"} } = $hash{"assembly_id"};
+         $assAccession_assName  {$hash{"assembly_id"} } = $hash{"assembly_name"};
+
+    }
+
+
+## Making the assembly directory #############
+
+
     `mkdir $ftp_dir_full_path/$study_id`;
 
      foreach my $assembly_name (keys %assembly_names){ # For every assembly I make a directory for the study -track hub
+
+         $assembly_name = getRightAssemblyName($assembly_name);
 
         `mkdir $ftp_dir_full_path/$study_id/$assembly_name`;
      }
@@ -133,42 +142,37 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
            print STDERR "ERROR in create_track_hub.pl script: I get more than 1 study object from ENA using study id $study_id\n" ;
       }
 
-      foreach my $study (@studies){ # it should be only 1 study
+      my $study =$studies[0]; # it should be only 1 study
 
-	  open(my $fh, '>', $hub_txt_file) or die "Could not open file '$hub_txt_file' $!";
+      open(my $fh, '>', $hub_txt_file) or die "Could not open file '$hub_txt_file' $!";
 
-	  print $fh "hub ".$study->accession."\n"; 
-	  print $fh "shortLabel "."RNA-seq alignment hub ".$study->accession."\n"; 
-          my $long_label = "longLabel ".$study->title." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study->accession."\">".$study->accession."</a>"."\n";
-#           if($long_label=~/[^\x00-\xFF]/){
-#              print STDERR "$study_id has non-ASCII characters in the long label of the hub.txt file in line 143\n";
-# 	     print $fh "NON-ASCII? ".$long_label;
-#           }else{
-	  print $fh $long_label;
-#          }
-	  print $fh "genomesFile genomes.txt\n";
-	  print $fh "email tapanari\@ebi.ac.uk\n";
-      
-      }
+      print $fh "hub ".$study->accession."\n"; 
+      print $fh "shortLabel "."RNA-seq alignment hub ".$study->accession."\n"; 
+      my $long_label = "longLabel ".$study->title." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study->accession."\">".$study->accession."</a>"."\n";
 
+      print $fh $long_label;
+      print $fh "genomesFile genomes.txt\n";
+      print $fh "email tapanari\@ebi.ac.uk\n";
+     
 #genomes.txt content 
 
 # genome IWGSC1.0+popseq
 # trackDb IWGSC1.0+popseq/trackDb.txt
 
 
-       my $genomes_txt_file="$ftp_dir_full_path/$study_id/genomes.txt";
+      my $genomes_txt_file="$ftp_dir_full_path/$study_id/genomes.txt";
 
-       `touch $genomes_txt_file`; ######################################## I MAKE THE genomes.txt FILE
+      `touch $genomes_txt_file`; ######################################## I MAKE THE genomes.txt FILE
 
-        open(my $fh, '>', $genomes_txt_file) or die "Could not open file '$genomes_txt_file' $!";
+      open(my $fh2, '>', $genomes_txt_file) or die "Could not open file '$genomes_txt_file' $!";
 
 
-   foreach my $assembly_name (keys %assembly_names){ # I create a stanza for every assembly
+      foreach my $assembly_name (keys %assembly_names){ # I create a stanza for every assembly
 
-        print $fh "genome ".$assembly_name."\n"; 
-        print $fh "trackDb ".$assembly_name."/trackDb.txt"."\n\n"; 
-   }
+        $assembly_name = getRightAssemblyName($assembly_name);
+        print $fh2 "genome ".$assembly_name."\n"; 
+        print $fh2 "trackDb ".$assembly_name."/trackDb.txt"."\n\n"; 
+      }
 
 # trackDb.txt content:
 
@@ -181,6 +185,8 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
    my %done_runs; # i have to store the run_id in this hash as there was an occassion where different samples had the same run_id and then the same run was multiple times in the trackDb.txt file (as track) which is not valid by UCSC
 
    foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of the study (if there is more than 1 assembly for a given study), I create a trackDb.txt file
+
+       $assembly_name = getRightAssemblyName($assembly_name);
 
        my $trackDb_txt_file="$ftp_dir_full_path/$study_id/$assembly_name/trackDb.txt";
 
@@ -217,7 +223,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
  
                 foreach my $run (@runs){
 
-                  if($done_runs {$run->accession()}{$assembly_name}){  # i do this check because i want to print every run once in the trackDb.txt file. see line 181
+                  if($done_runs {$run->accession()}{$assembly_name}){  # i do this check because i want to print every run once in the trackDb.txt file. see line 185
                         next;
                   }else{
 
@@ -233,19 +239,12 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
                   print $fh "track ". $run->accession()."\n"; 
                   print $fh "bigDataUrl $ftp_location \n"; 
                   my $short_label_ENA="shortLabel ENA:".$run->accession()."\n";
-#           if($short_label_ENA=~/[^\x00-\xFF]/){
-#              print STDERR "$study_id has non-ASCII characters in the short label of the trackDb.txt file in line 215\n";
-# 	     print $fh "NON-ASCII? ".$short_label_ENA;
-#           }else{
-	  print $fh $short_label_ENA;
-#          }
+	          print $fh $short_label_ENA;
+
                   my $long_label_ENA = "longLabel ".$run->title()."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
-#           if($long_label_ENA=~/[^\x00-\xFF]/){
-#              print STDERR "$study_id has non-ASCII characters in the long label of the trackDb.txt file in line 222\n";
-# 	     print $fh "NON-ASCII? ".$long_label_ENA;
-#           }else{
-	  print $fh $long_label_ENA;
-#          }
+
+	          print $fh $long_label_ENA;
+
                   print $fh "type bam\n";
                   print $fh "metadata species=$species_name ";
 
@@ -253,47 +252,29 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
                   foreach my $attr_sample (@attrib_array_sample){
  
                      my $value = $attr_sample->{"VALUE"};
-                     my @array = split(/ /, $value);
+                     my $key = $attr_sample->{"TAG"};
 
-                     if (scalar @array > 1) {
-                        my $string = "sample:".$attr_sample->{"TAG"}."=\"".$attr_sample->{"VALUE"}."\" ";  ##########non - ASCII? 
-#           if($string=~/[^\x00-\xFF]/){
-#              print STDERR "$study_id has non-ASCII characters in the metadata of the trackDb.txt file in line 239\n";
-# 	     print $fh "NON-ASCII? ".$string;
-#           }else{
-	  print $fh $string;
-#          }
-                 #print $fh $string  # i want to have "" in values that are more than 1 word , ie: sample:source_name="young leaves from Kn1-N heterozygote"
-                     }else{
-                        print $fh "sample:".$attr_sample->{"TAG"}."=".$attr_sample->{"VALUE"}." ";
-                     }
-
+                     print $fh "sample:".printlabel($key)."=".printlabel($value)." ";
+                     
                   }  
 
                   foreach my $attr_exp (@attrib_array_experiment){
 
                      my $value = $attr_exp->{"VALUE"};
-                     my @array = split(/ /, $value);
+                     my $key = $attr_exp->{"TAG"};
 
-                     if (scalar @array > 1) {
-                        print $fh "experiment:".$attr_exp->{"TAG"}."=\"".$attr_exp->{"VALUE"}."\" ";
-                     }else{
-                        print $fh "experiment:".$attr_exp->{"TAG"}."=".$attr_exp->{"VALUE"}." ";
-                     }
+                     print $fh "experiment:".printlabel($key)."=".printlabel($value)." ";
+
                   }
-
                   my @attrib_array_runs= @{$run->{"attributes"}};
 
                   foreach my $attr_run (@attrib_array_runs){
 
                      my $value = $attr_run->{"VALUE"};
-                     my @array = split(/ /, $value);
-
-                     if (scalar @array > 1) {
-                        print $fh "run:".$attr_run->{"TAG"}."=\"".$attr_run->{"VALUE"}."\" ";
-                     }else{
-                        print $fh "run:".$attr_run->{"TAG"}."=".$attr_run->{"VALUE"}." ";
-                     }
+                     my $key = $attr_run->{"TAG"};
+      
+                     print $fh "run:".printlabel($key)."=".printlabel($value)." ";
+                     
                   }
                   print $fh "\n\n";
 
@@ -303,23 +284,68 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
     } # end of for each sample
 
- 
-# groups.txt content:
-
-#name map
-#label Mapping
-#priority 2
-#defaultIsClosed 0
-
-       my $groups_txt_file="$ftp_dir_full_path/$study_id/$assembly_name/groups.txt";
-
-       `touch $groups_txt_file`;   ########################################  I MAKE THE groups.txt FILE IN EVERY ASSEMBLY FOLDER
-
-        open(my $fh2, '>', $groups_txt_file) or die "Could not open file '$groups_txt_file' $!";
-
-        print $fh2 "name map\n";
-        print $fh2 "label Mapping\n"; 
-        print $fh2 "priority 2\n"; 
-        print $fh2 "defaultIsClosed 0\n"; 
-
  }
+
+
+sub printlabel {
+
+   my $string = shift ;
+   my @array = split (/ /,$string) ;
+
+   if (scalar @array > 1) {
+
+       
+      $string = "\"".$string."\"";  
+
+   }
+   return $string;
+ 
+}
+
+
+sub getPlantNamesArrayExpressAPI {  # returns reference to a hash
+
+    my $get_plant_names_url= $server . "/getOrganisms/plants" ; # i get all organism names that robert uses for plants to date
+
+    my %robert_plant_names;
+
+#response:
+#[{"ORGANISM":"arabidopsis_thaliana"},{"ORGANISM":"brassica_rapa"},{"ORGANISM":"hordeum_vulgare"},{"ORGANISM":"hordeum_vulgare_subsp._vulgare"},
+#{"ORGANISM":"medicago_truncatula"},{"ORGANISM":"oryza_sativa"},{"ORGANISM":"oryza_sativa_japonica_group"},{"ORGANISM":"physcomitrella_patens"},
+#{"ORGANISM":"populus_trichocarpa"},{"ORGANISM":"sorghum_bicolor"},{"ORGANISM":"triticum_aestivum"},{"ORGANISM":"vitis_vinifera"},{"ORGANISM":"zea_mays"}]
+
+     my @plant_names_response = @{getJsonResponse($get_plant_names_url)};  # i call here the method that I made above
+
+     foreach my $hash_ref (@plant_names_response){
+
+         my %hash = %{$hash_ref};
+
+         $robert_plant_names{ $hash{"ORGANISM"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://plantain:3000/eg/getOrganisms/plants
+        
+     }
+
+     return \%robert_plant_names;
+
+}
+
+sub getRightAssemblyName { # this method returns the right assembly name in the cases where Robert takes the assembly accession instead of the assembly name due to our bug
+
+   my $assembly_string = shift;
+   my $assembly_name;
+
+
+   if (!$assName_assAccession{$assembly_string}){
+
+        if(!$assAccession_assName{$assembly_string}) {  # solanum_tuberosum has a wrong assembly.default it's neither the assembly.name nor the assembly.accession BUT : "assembly_name":"SolTub_3.0" and "assembly_id":"GCA_000226075.1"
+
+           $assembly_name = $assembly_string
+ 
+        }else{
+           $assembly_name = $assAccession_assName{$assembly_string};
+        }
+   }else{
+        $assembly_name = $assembly_string;
+   }
+   return $assembly_name;
+
+}

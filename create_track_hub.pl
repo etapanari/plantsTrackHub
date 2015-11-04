@@ -3,14 +3,14 @@
 # output : a trackhub (bunch of directories and files) on your server
 
 # how to call it:
-# perl create_track_hub.pl -study_id SRP036860 -local_ftp_dir_path /homes/tapanari/public_html/data/test -http_url http://www.ebi.ac.uk/~tapanari/data/test
+# perl create_track_hub.pl -study_id SRP036860 -local_ftp_dir_path /homes/tapanari/public_html/data/test2 -http_url http://www.ebi.ac.uk/~tapanari/data/test2
 
   use strict ;
   use warnings;
   use HTTP::Tiny;
   use JSON;
   use Getopt::Long;
-
+  use utf8;
   use Bio::EnsEMBL::ENA::SRA::BaseSraAdaptor qw(get_adaptor);
 
   my $study_id ;
@@ -110,7 +110,6 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
 ## Making the assembly directory #############
 
-
     `mkdir $ftp_dir_full_path/$study_id`;
 
      foreach my $assembly_name (keys %assembly_names){ # For every assembly I make a directory for the study -track hub
@@ -148,12 +147,16 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
       print $fh "hub ".$study->accession."\n"; 
       print $fh "shortLabel "."RNA-seq alignment hub ".$study->accession."\n"; 
+
       my $long_label = "longLabel ".$study->title." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study->accession."\">".$study->accession."</a>"."\n";
 
+      utf8::encode($long_label) ; # i do this as from ENA there are some funny data like library names in the long label of the study and perl thinks it's non-ASCii character, while they are not.
       print $fh $long_label;
       print $fh "genomesFile genomes.txt\n";
       print $fh "email tapanari\@ebi.ac.uk\n";
      
+
+      
 #genomes.txt content 
 
 # genome IWGSC1.0+popseq
@@ -182,13 +185,13 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 #longLabel Illumina Genome Analyzer IIx sequencing; GSM1321742: s1061_16C; Arabidopsis thaliana; RNA-Seq; <a href="http://www.ebi.ac.uk/ena/data/view/SRR1161753">SRR1161753</a>
 #type bam
 
-   my %done_runs; # i have to store the run_id in this hash as there was an occassion where different samples had the same run_id and then the same run was multiple times in the trackDb.txt file (as track) which is not valid by UCSC
+   my %done_runs; # i have to store the run_id in this hash as there was an occassion where different samples had the same run_id and then the same run was multiple times as track in the trackDb.txt file (as track) which is not valid by UCSC
 
    foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of the study (if there is more than 1 assembly for a given study), I create a trackDb.txt file
 
-       $assembly_name = getRightAssemblyName($assembly_name);
+        $assembly_name = getRightAssemblyName($assembly_name);
 
-       my $trackDb_txt_file="$ftp_dir_full_path/$study_id/$assembly_name/trackDb.txt";
+        my $trackDb_txt_file="$ftp_dir_full_path/$study_id/$assembly_name/trackDb.txt";
 
        `touch $trackDb_txt_file`;       ########################################  I MAKE THE trackDb.txt FILE IN EVERY ASSEMBLY FOLDER
 
@@ -219,8 +222,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
                 my @attrib_array_experiment= @{$experiment->{"attributes"}};
                 my @runs= @{$experiment->runs()}; # each experiment can have 1, 2 or more runs ; usually there are 1 or 2 runs per experiment
-              
- 
+
                 foreach my $run (@runs){
 
                   if($done_runs {$run->accession()}{$assembly_name}){  # i do this check because i want to print every run once in the trackDb.txt file. see line 185
@@ -231,7 +233,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
                   }
 
                   next unless ($run_id_location{$run->accession()}); # if Robert's API call did not return this run id then I won't use it
-                  next unless ($run_assembly{$run->accession} eq $assembly_name ); 
+                  my $roberts_api_asssembly_name =  $run_assembly{$run->accession} ;
+                  my $proper_name_current_run = getRightAssemblyName ($roberts_api_asssembly_name);
+                  next unless ($proper_name_current_run eq $assembly_name ); 
            
                   my $ftp_location = $run_id_location{$run->accession};
                   my $species_name = $run_robert_species_name {$run->accession};
@@ -242,7 +246,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 	          print $fh $short_label_ENA;
 
                   my $long_label_ENA = "longLabel ".$run->title()."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
-
+utf8::encode($long_label_ENA) ;
 	          print $fh $long_label_ENA;
 
                   print $fh "type bam\n";
@@ -253,8 +257,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
  
                      my $value = $attr_sample->{"VALUE"};
                      my $key = $attr_sample->{"TAG"};
-
-                     print $fh "sample:".printlabel($key)."=".printlabel($value)." ";
+utf8::encode($value) ;
+utf8::encode($key) ;
+                     print $fh "sample:".printlabel_key($key)."=".printlabel($value)." ";
                      
                   }  
 
@@ -262,8 +267,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
                      my $value = $attr_exp->{"VALUE"};
                      my $key = $attr_exp->{"TAG"};
-
-                     print $fh "experiment:".printlabel($key)."=".printlabel($value)." ";
+utf8::encode($value) ;
+utf8::encode($key) ;
+                     print $fh "experiment:".printlabel_key($key)."=".printlabel($value)." ";
 
                   }
                   my @attrib_array_runs= @{$run->{"attributes"}};
@@ -272,8 +278,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
                      my $value = $attr_run->{"VALUE"};
                      my $key = $attr_run->{"TAG"};
-      
-                     print $fh "run:".printlabel($key)."=".printlabel($value)." ";
+utf8::encode($value) ;
+utf8::encode($key) ;     
+                     print $fh "run:".printlabel_key($key)."=".printlabel($value)." ";
                      
                   }
                   print $fh "\n\n";
@@ -287,7 +294,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
  }
 
 
-sub printlabel {
+sub printlabel {   # I want the value of the key-value pair of the metadata to have quotes in the whole string if the value is more than 1 word.
 
    my $string = shift ;
    my @array = split (/ /,$string) ;
@@ -296,6 +303,20 @@ sub printlabel {
 
        
       $string = "\"".$string."\"";  
+
+   }
+   return $string;
+ 
+}
+
+
+sub printlabel_key {  # i want they key of the key-value pair of the metadata to have "_" instead of space if they are more than 1 word
+
+   my $string = shift ;
+   my @array = split (/ /,$string) ;
+
+   if (scalar @array > 1) {
+     $string =~ s/ /_/g;
 
    }
    return $string;
@@ -345,6 +366,10 @@ sub getRightAssemblyName { # this method returns the right assembly name in the 
         }
    }else{
         $assembly_name = $assembly_string;
+   }
+
+   if($assembly_string eq "3.0"){ # this is an exception for solanum_tuberosum
+      $assembly_name = "SolTub_3.0";
    }
    return $assembly_name;
 

@@ -18,12 +18,11 @@
 
 
 # example call:
-#perl trackHubRegistry.pl -username etapanari -password ensemblplants -hub_txt_file_location http://www.ebi.ac.uk/~tapanari/data/test/SRP036860/hub.txt -hub_name SRP036860 -assembly_name_accession_pairs JGI2.0,GCA_000002775.2
+#perl register_track_hub.pl -username tapanari -password testing -hub_txt_file_location http://www.ebi.ac.uk/~tapanari/data/test2/SRP036860/hub.txt -assembly_name_accession_pairs JGI2.0,GCA_000002775.2
 
   my $username ;
   my $pwd ;  # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
   my $trackHub_txt_file_url ;
-  my $hub_name ;
   my $assembly_name_accession_pairs ;
 
  
@@ -32,12 +31,12 @@
      "username=s" => \$username,
      "password=s" => \$pwd,
      "hub_txt_file_location=s" => \$trackHub_txt_file_url,
-     "hub_name=s" => \$hub_name,
      "assembly_name_accession_pairs=s" => \$assembly_name_accession_pairs
   );
 
-
   my $server = "http://193.62.54.43:3000";
+  $trackHub_txt_file_url =~ /.+\/(\w+)\/hub\.txt/ ;
+  my $hub_name = $1;
 
   my $endpoint = '/api/login';
   my $url = $server.$endpoint; 
@@ -72,7 +71,6 @@
   $request->headers->header(user => $username);
   $request->headers->header(auth_token => $auth_token);
   $response = $ua->request($request);
-  # print Dumper $response;
 
   my $response_code= $response->code;
 
@@ -82,21 +80,24 @@
 
   } elsif($response_code == 503 or $response_code == 500) {
 
+     print STDERR $hub_name."\t".$assembly_name_accession_pairs."\t".$response->code."\t" .$response->content."\n";
+
      for(my $i=1; $i<=10; $i++) {
 
-       printf "\n%s\t%d\t%s. $i retrying attempt: Retrying after 5s...", $hub_name, $response->code, $response->content;
+       print STDERR $i .".Retrying attempt: Retrying after 5s...\n";
        sleep 5;
        $response = $ua->request($request);
        $response_code= $response->code;
-       print "$hub_name is Registered\n" and last if $response_code == 201;
-       printf STDERR "%s\t%d\t%s\n", $hub_name, $response->code, $response->content and last if $response_code < 500;
-       print "\n";
+       print "$hub_name is Registered\n" and last if $response_code == 201; # if it's successful response
+       printf STDERR $hub_name."\t".$assembly_name_accession_pairs."\t".$response->code."\t". $response->content."\n";
      }
+     print STDERR "\n";
 
   } else {
-    print STDERR "ERROR: register_track_hub.pl ";
+    print STDERR "\nERROR: register_track_hub.pl ";
     print STDERR "$assembly_name_accession_pairs , ";
-    printf STDERR "%s\t%d\t%s\n", $hub_name, $response->code, $response->content;
+    printf STDERR  $hub_name."\t".$response->code."\t". $response->content."\n";
+    print STDERR "\n";
   } 
 
 

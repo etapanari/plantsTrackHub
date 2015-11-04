@@ -7,47 +7,38 @@
 
 # example run:
 # perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /homes/tapanari/public_html/data/test2  -http_url http://www.ebi.ac.uk/~tapanari/data/test2 > output
-
+                                                                                                #/nfs/ensemblgenomes/ftp/pub/misc_data/TrackHubs            #ftp://ftp.ensemblgenomes.org/pub/misc_data/TrackHubs/
   use strict ;
   use warnings;
-  use Data::Dumper;
 
   use HTTP::Tiny;
-  use JSON;
   use Getopt::Long;
+  use JSON;
+  use DateTime;   
+  use Date::Manip;
+  use LWP::UserAgent;
 
   my $registry_user_name ;
   my $registry_pwd ;
-  my $ftp_dir_full_path ; #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
+  my $ftp_local_path ; #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
   my $http_url ;  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
+  my $last_run_log_file_location;
 
-  my $register_only; 
+  my $from_scratch; 
 
+  my $ua = LWP::UserAgent->new;
 
   GetOptions(
      "username=s" => \$registry_user_name ,
      "password=s" => \$registry_pwd,
-     "local_ftp_dir_path=s" => \$ftp_dir_full_path,
+     "local_ftp_dir_path=s" => \$ftp_local_path,
      "http_url=s" => \$http_url,   #string
-     "register_only"  => \$register_only# flag
+     "do_track_hub_from_scratch"  => \$from_scratch# flag
 
   );
    
   my $server =  "http://plantain:3000/eg"; #or could be $ARGV[2]; # Robert's server where he stores his REST URLs
-
   my $http = HTTP::Tiny->new();
-
-
-  use DateTime;
-
-  my $dt = DateTime->today;
-
-  my $date_wrong_order = $dt->date;  # it is in format 2015-10-01
-  # i want 01-10-2015
-
-  my @words = split(/-/, $date_wrong_order);
-  my $current_date = $words[2] . "-". $words[1]. "-". $words[0];  # ie 01-10-2015 (1st October)
-
 
   my $date_string = localtime();
   print "* Started running the pipeline on:\n";
@@ -55,65 +46,55 @@
 
 
   print "\n* Ran this pipeline:\n\n";
-  print "perl get_all_studies.pl -username $registry_user_name -password $registry_pwd -local_ftp_dir_path $ftp_dir_full_path  -http_url $http_url\n";
+  print "perl track_hub_.pl -username $registry_user_name -password $registry_pwd -local_ftp_dir_path $ftp_local_path -http_url $http_url";
+  if($from_scratch){
+      print " -do_track_hub_from_scratch\n";
+  } else{
+    print "\n";
+  }
+
 
   print "\n* I am using this ftp server to eventually build my track hubs:\n\n $http_url\n\n";
   print "* I am using this Registry account:\n\n user:$registry_user_name \n password:$registry_pwd\n\n ";
 
+if ($from_scratch){
 
   print "\n ******** deleting all track hubs registered in the Registry under my account\n\n";  
-  my $delete_script_output = `perl delete_registered_trackhubs.pl -username $registry_user_name -password $registry_pwd` ; 
+  my $delete_script_output = `perl delete_registered_trackhubs.pl -username $registry_user_name -password $registry_pwd -study_id all`  ; 
   print $delete_script_output;
 
- 
-  if (! -e $ftp_dir_full_path ){  # if the directory does not exist, make it
 
-   print "directory \'$ftp_dir_full_path\' does not exist, I will make it now..\n\n";
+ print "\n ******** deleting everything in directory $ftp_local_path\n\n";
 
-    `mkdir $ftp_dir_full_path`; 
-
-     if($? !=0){
- 
-          die "I could not create directory \'$ftp_dir_full_path\'\n";
-
-     }else{
-          print "Successfully created directory \'$ftp_dir_full_path\'\n";
-     }
-
-  }
-
-  if(!$register_only) {
-  print "\n ******** deleting everything in directory $ftp_dir_full_path\n\n";
-
-
-  my $ls_output = `ls $ftp_dir_full_path`  ;
+  my $ls_output = `ls $ftp_local_path`  ;
 
   if($? !=0){
  
-      die "I cannot see contents of $ftp_dir_full_path (ls failed)\n";
+      die "I cannot see contents of $ftp_local_path(ls failed)\n";
 
   }
 
   if(!$ls_output){  # check if there are files inside the directory
 
-     print "Directory $ftp_dir_full_path is empty - No need for deletion\n";
+     print "Directory $ftp_local_path is empty - No need for deletion\n";
 
    } else{ # directory is not empty
 
-      `rm -r $ftp_dir_full_path/*`;  # removing the track hub files in the ftp server
+      `rm -r $ftp_local_path/*`;  # removing the track hub files in the ftp server
 
       if($? !=0){
  
-          print STDERR "ERROR in: track_hub_creation_and_registration_pipeline.pl failed to remove contents of dir $ftp_dir_full_path\n";
+          print STDERR "ERROR in: track_hub_creation_and_registration_pipeline.pl failed to remove contents of dir $ftp_local_path\n";
 
       }else{
 
-          print "Successfully deleted all content of $ftp_dir_full_path\n";
+          print "Successfully deleted all content of $ftp_local_path\n";
       }
 
    }
  
 }
+
 
 sub getJsonResponse { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
 
@@ -174,12 +155,13 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
     my %studies; # it stores all distinct study ids
     my %studyId_assemblyName; # stores as key the study id and as value the ensembl assembly name ie for oryza_sativa it would be IRGSP-1.0
     my %robert_plant_study;
+    my %studyId_lastProcessedDates;
 
 # a line of this call:  http://plantain:3000/eg/getLibrariesByOrganism/oryza_sativa
 #[{"STUDY_ID":"DRP000315","SAMPLE_ID":"SAMD00009891","RUN_ID":"DRR000756","ORGANISM":"oryza_sativa_japonica_group","STATUS":"Complete","ASSEMBLY_USED":"IRGSP-1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 17:39:45",
 #"LAST_PROCESSED_DATE":"Sat Sep 05 2015 22:40:36","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000756/DRR000756.cram"},
 
- foreach my $ens_plant (keys %ens_plant_names) {
+ foreach my $ens_plant (keys %ens_plant_names) { # i loop through the ensembl plant names to get from Robert all the done studies/runs
 
      my $url = $get_runs_by_organism_endpoint . $ens_plant;
 
@@ -197,21 +179,53 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
          $studies {$hash {"STUDY_ID"}} = 1 ;
         
          $studyId_assemblyName { $hash {"STUDY_ID"} } { $hash {"ASSEMBLY_USED"} } = 1; # i can have more than one assembly for each study
+
+         $studyId_lastProcessedDates { $hash {"STUDY_ID"} } { $hash {"LAST_PROCESSED_DATE"} } =1 ;  # i get different last processed dates from different the runs of the study
         
      }
 }
 
-    my $line_counter = 0;
+ my %studyId_date;
+ 
+ 
+ foreach my $study_id (keys %studyId_lastProcessedDates ){  #each study has more than 1 processed date, as there are usually multiple runs in each study with different processed date each. I want to get the most current date
 
-  if(!$register_only) {
+    my $max_date=0;
+    foreach my $date (keys %{$studyId_lastProcessedDates {$study_id}}){
+       my $unix_time = UnixDate( ParseDate($date), "%s" );
+
+       if($unix_time > $max_date){
+           $max_date = $unix_time ;
+       }
+    }
+
+    $studyId_date {$study_id} = $max_date ;
+
+ }
+#  
+#   foreach my $study (keys %studyId_date){
+# 
+#           print $study."\t". $studyId_date {$study} ."\n" ;
+#      
+#   }
+
+
+  my $line_counter = 0;
+  my %studies_last_run_of_pipeline;
+  my %obsolete_studies;
+  my %common_studies;
+  my %common_updated_studies;
+  my %new_studies;
+
+  if($from_scratch) {
 
   print "\n ******** starting to make directories and files for the track hubs in the ftp server: $http_url\n\n";
 
     foreach my $study_id (keys %studyId_assemblyName){ 
 
           $line_counter ++;
-          print "$line_counter.\tcreating track hub for study $study_id\n";
-         `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_dir_full_path -http_url $http_url` ; # here I create for every study a track hub *********************
+         print "$line_counter.\tcreating track hub for study $study_id\n";
+        `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
    }
 
    my $date_string2 = localtime();
@@ -219,60 +233,164 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
    print "Local date,time: $date_string2\n";
 
     print "\n***********************************\n\n";
+
+}else{ # incremental update
+  
+   opendir my($dh),  $ftp_local_path or die "Couldn't open dir ' $ftp_local_path': $!"; # i am getting all the content in the ftp local path - each name of the directory is a study id
+   my @files = readdir $dh;
+   closedir $dh;
+
+   foreach my $file (@files){
+
+      next if ($file =~/^\./); # because i get also these 2 results from the readdir : .  and ..
+      $studies_last_run_of_pipeline{$file} = 1;
+
+   }
+   
+   foreach my $study_id (keys %studies){ # current studies from Robert that are completed
+
+       if(!$studies_last_run_of_pipeline{$study_id}){ # if study is not in the server, then it's a new study I have to make a track hub for
+            $new_studies{$study_id} = 1;
+       }else{
+            $common_studies {$study_id} = 1 ;
+       }
+
+   }
+   
+   foreach my $study_id (keys %studies_last_run_of_pipeline){ # studies in the ftp server from last time I ran the pipeline
+
+       if(!$studies{$study_id}){ # if study is in the server but not in the current list of Robert it means that this study is removed from ENA
+            $obsolete_studies{$study_id} = 1;
+       }
+   }
+
+   foreach my $study_to_remove (keys %obsolete_studies){
+ 
+        `rm $ftp_local_path/$study_to_remove` ;
+        `perl delete_register_trackhubs.pl -study_id $study_to_remove  -username $registry_user_name  -password $registry_pwd `    ;
+   }
+
+   foreach my $common_study (keys %common_studies){  # from the common studies, I want to see which ones were updated from Robert , after I last ran the pipeline. I will update only those ones.
+ 
+         my $roberts_last_processed_now_unix_time = $studyId_date {$common_study};
+
+         my $ftp_location_of_study = $ftp_local_path ."/$common_study"; # i want to find the date I last ran the pipeline, I want to get the date from the created date of the files in the ftp server of the track hubs
+         my $index = $ua->get($ftp_location_of_study); 
+         my $string = $index->decoded_content;
+         #-rw-r--r--    1 ftp      ftp           343 Nov 03 16:41 hub.txt
+
+         $string =~/.+ (\w+ \d{2} \d+:\d+) hub.txt/;
+
+         my $date=$1 ; #Nov 03 16:41
+
+         my $study_created_date_unix_time = UnixDate( ParseDate($date), "%s" );
+
+         if( $study_created_date_unix_time < $roberts_last_processed_now_unix_time ) {
+
+              $common_updated_studies {$common_study}=1;
+         }
+   }
+
+   
 }
+
+    my %studies_to_be_re_made = (%common_updated_studies , %new_studies);
+
+    if(scalar keys %studies_to_be_re_made !=0){
+
+
+       print "\n ******** starting to make directories and files for the track hubs in the ftp server that are new/updated: $http_url\n\n";
+       $line_counter = 0;
+
+       foreach my $study_id (keys %studies_to_be_re_made){ 
+
+          $line_counter ++;
+         print "$line_counter.\tcreating track hub for study $study_id\n";
+        `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+       }
+
+       my $date_string2 = localtime();
+       print " \n Finished creating the files,directories of the track hubs on the server on:\n";
+       print "Local date,time: $date_string2\n";
+
+        print "\n***********************************\n\n";
+    }else{
+            if(!$from_scratch){
+               print "there is no update to be made in the track hubs\n";
+            }
+    }
+
     my $line_counter2 = 0;
 
-    foreach my $study_id (keys %studyId_assemblyName){ 
+    my %studies_to_register;
+    if(!$from_scratch){
+ 
+        %studies_to_register= %studies_to_be_re_made ;
+    }else{
+
+        %studies_to_register = %studyId_assemblyName ;
+    }
+
+    foreach my $study_id (keys %studies_to_register){ 
 
           my $hub_txt_url = $http_url . "/" . $study_id . "/hub.txt" ;
            
-          my @assembly_names;
+          my @assembly_names_with_accessions;
       
           foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data , get runs by organism REST call                           
          
-               $assembly_name = getRightAssemblyName($assembly_name);
+               $assembly_name = getRightAssemblyName($assembly_name); # as Robert gets the assembly.default that due to our bug could be the assembly.accession rather than the assembly.name
 
                if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
-                   print STDERR "ERROR: study $study_id will not be Registered as there is no assembly name \'$assembly_name\' (Robert's call) of study $study_id in my hash from ensemblgenomes REST call: $rest_call_plants \n";
-                   next;
+
+                   print STDERR "ERROR: study $study_id will not be Registered as there is no assembly name \'$assembly_name\' (Robert's call) of study $study_id in my hash from ensemblgenomes REST call: $rest_call_plants \n\n";
+                   next;  # this is for potato (solanum_tuberosum that has an invalid assembly.default name)
                }
                next if($assName_assAccession{$assembly_name} eq "missing assembly accession"); # i dont need the assembly names if there is no assembly accession as I cannot load the track hub in the Registry without assembly accession
-               push ( @assembly_names, $assembly_name) ; # this array has only the assembly names that have assembly accessions
+               push ( @assembly_names_with_accessions, $assembly_name) ; # this array has only the assembly names that have assembly accessions
 
           }
-          my $assemblyNames_assemblyAccesions_string="empty" ;
-          my $counter=0;
 
-          foreach my $assembly_name ( @assembly_names ){
+          my @array_string_pairs;
 
-               $counter ++;
+          foreach my $assembly_name ( @assembly_names_with_accessions ){
 
                my $string =  $assembly_name.",".$assName_assAccession{$assembly_name} ;
-
-               if (scalar @assembly_names ==1 ){
-
-                     $assemblyNames_assemblyAccesions_string = $string ;
-
-               }else{
-
-                    if($counter == 1){
-
-                       $assemblyNames_assemblyAccesions_string = $string ;
-
-                    }else{
-
-                       $assemblyNames_assemblyAccesions_string = $assemblyNames_assemblyAccesions_string ."," . $string;
-
-                   }
-               }
+               push (@array_string_pairs , $string);
 
           }
 
+          my $assemblyNames_assemblyAccesions_string;
 
+          if (scalar @array_string_pairs >=1 ){
 
+             $assemblyNames_assemblyAccesions_string=$array_string_pairs[0];
+
+          } else{
+
+          
+              $assemblyNames_assemblyAccesions_string="empty";
+          }
+
+          if (scalar @array_string_pairs > 1){
+
+              $assemblyNames_assemblyAccesions_string=$array_string_pairs[0].",";
+
+              for(my $index=1; $index< scalar @array_string_pairs; $index++){
+
+               $assemblyNames_assemblyAccesions_string=$assemblyNames_assemblyAccesions_string.$array_string_pairs[$index];
+               if ($index < scalar @array_string_pairs -1){
+                   print ",";
+               }
+               
+             }
+          }
+
+          #print $study_id."\t".$assemblyNames_assemblyAccesions_string . "\n";
+  
           next if ($assemblyNames_assemblyAccesions_string eq "empty"); # i can't put it in the registry if there is no assembly accession
 
-          my $output = `perl register_track_hub.pl -username $registry_user_name -password $registry_pwd -hub_txt_file_location $hub_txt_url -hub_name $study_id -assembly_name_accession_pairs $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
+          my $output = `perl register_track_hub.pl -username $registry_user_name -password $registry_pwd -hub_txt_file_location $hub_txt_url -assembly_name_accession_pairs $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
           if($output =~ /is Registered/){
 
                  $line_counter2 ++;
@@ -282,6 +400,15 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
           print $output;
 
     } #************************************************************************************
+
+
+    my $dt = DateTime->today;
+
+    my $date_wrong_order = $dt->date;  # it is in format 2015-10-01
+    # i want 01-10-2015
+
+    my @words = split(/-/, $date_wrong_order);
+    my $current_date = $words[2] . "-". $words[1]. "-". $words[0];  # ie 01-10-2015 (1st October)
 
     print "\n\nRobert's REST calls give the following stats:\n";
     print "\nThere are " . scalar (keys %runs) ." plant runs completed to date ( $current_date )\n";
@@ -313,9 +440,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
   print "Local date,time: $date_string_end\n";
 
 
-  my $total_disc_space_of_track_hubs = `du -sh $ftp_dir_full_path`;
+  my $total_disc_space_of_track_hubs = `du -sh $ftp_local_path`;
   
-  print "\ntotal disc space occupied in $ftp_dir_full_path is:\n $total_disc_space_of_track_hubs\n";
+  print "\ntotal disc space occupied in $ftp_local_path is:\n $total_disc_space_of_track_hubs\n";
 
 sub getRightAssemblyName { # this method returns the right assembly name in the cases where Robert takes the assembly accession instead of the assembly name due to our bug
 
@@ -334,6 +461,10 @@ sub getRightAssemblyName { # this method returns the right assembly name in the 
         }
    }else{
         $assembly_name = $assembly_string;
+   }
+
+   if($assembly_string eq "3.0"){ # this is an exception for solanum_tuberosum
+      $assembly_name = "SolTub_3.0";
    }
    return $assembly_name;
 

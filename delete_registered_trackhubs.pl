@@ -62,13 +62,13 @@
       foreach my $trackdb (@{$trackhub->{trackdbs}}) {
 
         printf STDERR "TrackDb %s does not have an URI. Skipping...\n", $trackdb->{assembly} and next unless $trackdb->{uri};
-        printf "\tDeleting %s trackdb...", $trackdb->{assembly};
+        print "\tDeleting %s trackdb...". $trackdb->{assembly};
         $request = DELETE($trackdb->{uri});
         $request->headers->header(user => $username);
         $request->headers->header(auth_token => $auth_token);
         $response = $ua->request($request);
         $counter_of_deleted++ if $response->code == 200;
-        print "Done (deleted $counter_of_deleted track hubs so far)\n" and next if $response->code == 200;
+        print "Done (deleted $counter_of_deleted trackDbs so far)\n" and next if $response->code == 200;
         printf STDERR "Couldn't delete %s: %d\n", $trackdb->{assembly}, $response->code;
       }
     }

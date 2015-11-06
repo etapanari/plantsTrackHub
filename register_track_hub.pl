@@ -15,10 +15,9 @@
 
   my $ua = LWP::UserAgent->new;
 
-
-
 # example call:
 #perl register_track_hub.pl -username tapanari -password testing -hub_txt_file_location http://www.ebi.ac.uk/~tapanari/data/test2/SRP036860/hub.txt -assembly_name_accession_pairs JGI2.0,GCA_000002775.2
+#  perl register_track_hub.pl -username tapanari -password testing -hub_txt_file_location ftp://ftp.ensemblgenomes.org/pub/misc_data/TrackHubs/SRP050323/hub.txt -assembly_name_accession_pairs IWGSC1.0+popseq,0000
 
   my $username ;
   my $pwd ;  # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
@@ -43,7 +42,6 @@
   my $request = GET($url) ;
 
   $request->headers->authorization_basic($username , $pwd);
-  # print Dumper $request;
   my $response = $ua->request($request);
 
   my $auth_token = from_json($response->content)->{auth_token};
@@ -78,25 +76,35 @@
 
     print $hub_name ." is Registered\n";
 
-  } elsif($response_code == 503 or $response_code == 500) {
+  } elsif($response_code == 503 or $response_code == 500 or $response_code == 400){ #and $response->content=~/server response timed out/)) {
 
-     print STDERR $hub_name."\t".$assembly_name_accession_pairs."\t".$response->code."\t" .$response->content."\n";
+     print "Couldn't register track hub with the first attempt: " .$hub_name."\t".$assembly_name_accession_pairs."\t".$response->code."\t" .$response->content."\n";
+
+     my $flag_success=0;
 
      for(my $i=1; $i<=10; $i++) {
 
-       print STDERR $i .".Retrying attempt: Retrying after 5s...\n";
+       print $i .".Retrying attempt: Retrying after 5s...\n";
        sleep 5;
        $response = $ua->request($request);
        $response_code= $response->code;
-       print "$hub_name is Registered\n" and last if $response_code == 201; # if it's successful response
-       printf STDERR $hub_name."\t".$assembly_name_accession_pairs."\t".$response->code."\t". $response->content."\n";
+       if($response_code == 201){
+           $flag_success =1 ;
+           print "$hub_name is Registered\n";
+           last;
+       }
+
      }
-     print STDERR "\n";
+
+     if($flag_success ==0){
+     
+          printf STDERR $hub_name."\t".$assembly_name_accession_pairs."\t".$response->code."\t". $response->content."\n\n";
+     }
 
   } else {
     print STDERR "\nERROR: register_track_hub.pl ";
     print STDERR "$assembly_name_accession_pairs , ";
-    printf STDERR  $hub_name."\t".$response->code."\t". $response->content."\n";
+    print STDERR  $hub_name."\t".$response->code."\t". $response->content."\n";
     print STDERR "\n";
   } 
 

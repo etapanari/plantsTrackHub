@@ -7,7 +7,7 @@
 
 # example run:
 # perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /homes/tapanari/public_html/data/test2  -http_url http://www.ebi.ac.uk/~tapanari/data/test2 > output
-            # or                                                                                    #/nfs/ensemblgenomes/ftp/pub/misc_data/TrackHubs            #ftp://ftp.ensemblgenomes.org/pub/misc_data/TrackHubs/ 1> output 2>errors
+            # or                                                                                    #/nfs/ensemblgenomes/ftp/pub/misc_data/TrackHubs            #ftp://ftp.ensemblgenomes.org/pub/misc_data/TrackHubs 1> output 2>errors
   use strict ;
   use warnings;
 

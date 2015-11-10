@@ -471,7 +471,8 @@ sub getRightAssemblyName { # this method returns the right assembly name in the 
 
    if (!$assName_assAccession{$assembly_string}){
 
-        if(!$assAccession_assName{$assembly_string}) {  # solanum_tuberosum has a wrong assembly.default it's neither the assembly.name nor the assembly.accession BUT : "assembly_name":"SolTub_3.0" and "assembly_id":"GCA_000226075.1"
+        if(!$assAccession_assName{$assembly_string}) {  
+# solanum_tuberosum has a wrong assembly.default it's neither the assembly.name nor the assembly.accession BUT : "assembly_name":"SolTub_3.0" and "assembly_id":"GCA_000226075.1"
 
            $assembly_name = $assembly_string;
  

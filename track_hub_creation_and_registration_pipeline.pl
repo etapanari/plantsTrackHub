@@ -301,7 +301,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
    }
 
    
-  }
+  } # end of the incremental update
 
     my %studies_to_be_re_made = (%common_updated_studies , %new_studies);
 

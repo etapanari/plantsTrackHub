@@ -7,7 +7,8 @@
 
 # example run:
 # perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /homes/tapanari/public_html/data/test2  -http_url http://www.ebi.ac.uk/~tapanari/data/test2 > output
-            # or                                                                                    #/nfs/ensemblgenomes/ftp/pub/misc_data/TrackHubs            #ftp://ftp.ensemblgenomes.org/pub/misc_data/TrackHubs 1> output 2>errors
+# perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs  -http_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs 1> output 2>errors
+
   use strict ;
   use warnings;
 
@@ -20,8 +21,8 @@
 
   my $registry_user_name ;
   my $registry_pwd ;
-  my $ftp_local_path ; #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
-  my $http_url ;  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
+  my $ftp_local_path ; # ie. ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs
+  my $http_url ;  #    ie. /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs;
 
   my $from_scratch; 
 
@@ -66,7 +67,7 @@ if ($from_scratch){
 
   my $ls_output = `ls $ftp_local_path`  ;
 
-  if($? !=0){ # if ls is successful, i get 0
+  if($? !=0){ # if ls is successful, it returns 0
  
       die "I cannot see contents of $ftp_local_path(ls failed)\n";
 
@@ -102,7 +103,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
   if($response->{success} ==1) { # if the response is successful then I get 1
 
-    my $content=$response->{content};      # print $response->{content}."\n"; # it prints whatever is the content of the URL, ie the jason response
+    my $content=$response->{content};      # it prints whatever is the content of the URL, ie the json response
     my $json = decode_json($content);      # it returns an array reference 
 
     return $json;
@@ -110,7 +111,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
   }else{
 
       my ($status, $reason) = ($response->{status}, $response->{reason}); 
-      print STDERR "Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200" reason "OK"
+      print STDERR "Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
       return 0;
   }
 }
@@ -135,7 +136,8 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
          $ens_plant_names {$hash {"species"}} = 1; # there are 39 Ens plant species at the moment Nov 2015
 
-         if(! $hash{"assembly_id"}){  # some species don't have assembly id, ie assembly accession, 3 plant species don't have assembly accession: triticum_aestivum, oryza_longistaminata and oryza_rufipogon 
+         if(! $hash{"assembly_id"}){  # some species don't have assembly id, ie assembly accession, 
+        #  3 plant species don't have assembly accession: triticum_aestivum, oryza_longistaminata and oryza_rufipogon 
 
              $assName_assAccession  {$hash{"assembly_name"}} =  "0000";
              next;
@@ -151,7 +153,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
     my %robert_plants_done;
     my %runs; # it stores all distinct run ids
     my %studies; # it stores all distinct study ids
-    my %studyId_assemblyName; # stores as key the study id and as value the ensembl assembly name ie for oryza_sativa it would be IRGSP-1.0
+    my %studyId_assemblyName; # stores key :study id and value: ensembl assembly name,ie for oryza_sativa it would be IRGSP-1.0
     my %robert_plant_study;
     my %studyId_lastProcessedDates;
 
@@ -163,7 +165,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
      my $url = $get_runs_by_organism_endpoint . $ens_plant;
 
-     my @get_runs_by_organism_response = @{getJsonResponse($url)};  # i call here the method that I made above
+     my @get_runs_by_organism_response = @{getJsonResponse($url)};  
 
      foreach my $hash_ref (@get_runs_by_organism_response){
 
@@ -186,7 +188,8 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
  my %studyId_date;
  
  
- foreach my $study_id (keys %studyId_lastProcessedDates ){  #each study has more than 1 processed date, as there are usually multiple runs in each study with different processed date each. I want to get the most current date
+ foreach my $study_id (keys %studyId_lastProcessedDates ){  
+#each study has more than 1 processed date, as there are usually multiple runs in each study with different processed date each. I want to get the most current date
 
     my $max_date=0;
     foreach my $date (keys %{$studyId_lastProcessedDates {$study_id}}){
@@ -216,9 +219,9 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
     foreach my $study_id (keys %studyId_assemblyName){ 
 
          $line_counter ++;
-         print "$line_counter.\tcreating track hub for study $study_id\n";
+         print "$line_counter.\tcreating track hub for study $study_id\n";  #check if perl create_track_hub.pl is successfully executed??
         `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
-   }
+    }
 
    my $date_string2 = localtime();
    print " \n Finished creating the files,directories of the track hubs on the server on:\n";
@@ -226,7 +229,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
    print "\n***********************************\n\n";
 
-}else{ # incremental update
+   }else{ # incremental update
   
    opendir my($dh),  $ftp_local_path or die "Couldn't open dir ' $ftp_local_path': $!"; # i am getting all the content in the ftp local path - each name of the directory is a study id
    my @files = readdir $dh;
@@ -298,7 +301,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
    }
 
    
-}
+  }
 
     my %studies_to_be_re_made = (%common_updated_studies , %new_studies);
 

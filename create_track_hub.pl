@@ -12,6 +12,7 @@
   use Getopt::Long;
   use utf8;
   use Bio::EnsEMBL::ENA::SRA::BaseSraAdaptor qw(get_adaptor);
+  use POSIX qw(strftime); # to get GMT time stamp
 
   my $study_id ;
   my $ftp_dir_full_path ;   #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
@@ -24,39 +25,16 @@
      "http_url=s" => \$url_root
   );
 
-  my $server =  "http://plantain:3000/eg"; # Robert's server where he stores his REST URLs
+     my $server_array_express =  "http://plantain:3000/eg"; # Robert's server where he stores his REST URLs
 
-  my $http = HTTP::Tiny->new();
+     my $http = HTTP::Tiny->new();
 
-
-sub getJsonResponse { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
-
-  my $url = shift; # example: "http://plantain:3000/eg/getLibrariesByStudyId/SRP033494";
-
-  my $response = $http->get($url);
-
-  if($response->{success} ==1) { # if the response is successful then I get 1
-
-     my $content=$response->{content};     
-     my $json = decode_json($content); # it returns an array reference 
-
-     return $json;
-
-  }else{
-
-      my ($status, $reason) = ($response->{status}, $response->{reason}); #LWP perl library for dealing with http
-      print "create_track_hub_pipeline.pl gave ERROR: ";
-      print STDERR "Failed to get response for REST call: $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200" reason "OK"
-      return 0;
-  }
-
-}
 
      my %robert_plant_names = %{getPlantNamesArrayExpressAPI()}; 
 
-     my $get_runs_from_study_url= $server . "/getLibrariesByStudyId/$study_id"; # i get all the runs of the study
+     my $get_runs_from_study_url= $server_array_express . "/getLibrariesByStudyId/$study_id"; # i get all the runs of the study
     
-     my @runs_response=@{getJsonResponse($get_runs_from_study_url)};  # i call here the method that I made above
+     my @runs_response=@{getJsonResponse($get_runs_from_study_url)};  
 
      my %assembly_names; #  it stores all distinct assembly names for a given study
      my %run_id_location; # it stores as key the run id and value the location in the ftp server of arrayexpress
@@ -80,9 +58,9 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
          }
      }
 
-    my $rest_call_plants = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
+    my $ens_genomes_plants_rest_call = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
 
-    my @array_response_plants_assemblies = @{getJsonResponse($rest_call_plants)};  
+    my @array_response_plants_assemblies = @{getJsonResponse($ens_genomes_plants_rest_call)};  
 
 # response:
 #[{"base_count":"479985347","is_reference":null,"division":"EnsemblPlants","has_peptide_compara":"1","dbname":"physcomitrella_patens_core_28_81_11","genebuild":"2011-03-JGI","assembly_level":"scaffold","serotype":null,
@@ -109,15 +87,57 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
 
 ## Making the assembly directory #############
+    my $ls_output = `ls $ftp_dir_full_path`  ;
+
+    if($? !=0){ # if ls is successful, it returns 0
+ 
+      die "I cannot see contents of $ftp_dir_full_path(ls failed) in script: ".__FILE__." line: ".__LINE__."\n";
+
+   }
+
+    if($ls_output=~/$study_id/){
+
+     `rm -r $ftp_dir_full_path/$study_id` ;
+
+      if($? !=0){ # if ls is successful, it returns 0
+ 
+      die "I cannot rm $ftp_dir_full_path/$study_id  in script: ".__FILE__." line: ".__LINE__."\n";
+
+      }
+    }
 
     `mkdir $ftp_dir_full_path/$study_id`;
+
+     my $mkdir_flag=0;
+
+     if($? !=0){ # if mkdir is successful, it returns 0
+ 
+      die "I cannot make dir $ftp_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+
+     }else{
+ 
+        $mkdir_flag=1;
+
+     }
+
+     my $mkdir_flag2=0;
 
      foreach my $assembly_name (keys %assembly_names){ # For every assembly I make a directory for the study -track hub
 
          $assembly_name = getRightAssemblyName($assembly_name);
 
-        `mkdir $ftp_dir_full_path/$study_id/$assembly_name`;
+         `mkdir $ftp_dir_full_path/$study_id/$assembly_name`;
+
+         if($? !=0){ # if mkdir is successful, it returns 0
+ 
+           die "I cannot make dir $ftp_dir_full_path/$study_id/$assembly_name in script: ".__FILE__." line: ".__LINE__."\n";
+
+         }else{
+            $mkdir_flag2=1;
+         }
      }
+
+
 
 #hub.txt content:
 
@@ -127,10 +147,19 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 #genomesFile genomes.txt
 #email tapanari@ebi.ac.uk
 
+      my $touch_flag=0;
 
       my $hub_txt_file="$ftp_dir_full_path/$study_id/hub.txt";
 
       `touch $hub_txt_file`;
+
+       if($? !=0){ # if touch is successful, it returns 0
+ 
+           die "I cannot touch file $ftp_dir_full_path/$study_id/hub.txt in script: ".__FILE__." line: ".__LINE__."\n";
+
+       }else{
+            $touch_flag=1;
+       }
 
       my $study_adaptor = get_adaptor('Study'); # I am using Dan Stain's ENA API
 
@@ -138,7 +167,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
       if (scalar @studies >1){
  
-           print STDERR "ERROR in create_track_hub.pl script: I get more than 1 study object from ENA using study id $study_id\n" ;
+           print STDERR "ERROR in ".__FILE__." line ".__LINE__." : I get more than 1 study object from ENA using study id $study_id\n" ;
       }
 
       my $study =$studies[0]; # it should be only 1 study
@@ -161,11 +190,19 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
 # genome IWGSC1.0+popseq
 # trackDb IWGSC1.0+popseq/trackDb.txt
-
+      my $touch_flag2=0;
 
       my $genomes_txt_file="$ftp_dir_full_path/$study_id/genomes.txt";
 
       `touch $genomes_txt_file`; ######################################## I MAKE THE genomes.txt FILE
+
+       if($? !=0){ # if touch is successful, it returns 0
+ 
+           die "I cannot touch file $ftp_dir_full_path/$study_id/genomes.txt in script: ".__FILE__." line: ".__LINE__."\n";
+
+       }else{
+            $touch_flag2=1;
+       }
 
       open(my $fh2, '>', $genomes_txt_file) or die "Could not open file '$genomes_txt_file' $!";
 
@@ -184,7 +221,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 #shortLabel ENA:SRR1161753
 #longLabel Illumina Genome Analyzer IIx sequencing; GSM1321742: s1061_16C; Arabidopsis thaliana; RNA-Seq; <a href="http://www.ebi.ac.uk/ena/data/view/SRR1161753">SRR1161753</a>
 #type bam
-
+   my $touch_flag3=0;
    my %done_runs; # i have to store the run_id in this hash as there was an occassion where different samples had the same run_id and then the same run was multiple times as track in the trackDb.txt file (as track) which is not valid by UCSC
 
    foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of the study (if there is more than 1 assembly for a given study), I create a trackDb.txt file
@@ -195,9 +232,18 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
        `touch $trackDb_txt_file`;       ########################################  I MAKE THE trackDb.txt FILE IN EVERY ASSEMBLY FOLDER
 
+       if($? !=0){ # if touch is successful, it returns 0
+ 
+           die "I cannot touch file $ftp_dir_full_path/$study_id/$assembly_name/trackDb.txt in script: ".__FILE__." line: ".__LINE__."\n";
+
+       }else{
+            $touch_flag3=1;
+       }
+
+
         my $study= $studies[0]; # this is basically 1 study- I get it using the study id, I can get the first element of the array
 
-        open(my $fh, '>', $trackDb_txt_file) or die "Could not open file '$trackDb_txt_file' $!";
+        open(my $fh, '>', $trackDb_txt_file) or die "Error in ".__FILE__." line ".__LINE__." Could not open file '$trackDb_txt_file' $!";
 
          my @samples=@{ $study->samples()};  # usually 1 study has more than 1 samples
 
@@ -251,6 +297,9 @@ utf8::encode($long_label_ENA) ;
 
                   print $fh "type bam\n";
                   print $fh "metadata species=$species_name ";
+                  my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;
+
+                  print $fh "hub_created_date=".printlabel($date_string)." ";
 
 
                   foreach my $attr_sample (@attrib_array_sample){
@@ -294,6 +343,41 @@ utf8::encode($key) ;
  }
 
 
+
+
+     if ($mkdir_flag2==1 and $mkdir_flag==1 and $touch_flag==1 and $touch_flag2==1 and $touch_flag3==1){
+         print "..Done\n";
+     }else{
+         print "..Error\n";
+     }
+
+##methods
+
+
+
+sub getJsonResponse { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
+
+  my $url = shift; # example: "http://plantain:3000/eg/getLibrariesByStudyId/SRP033494";
+
+  my $response = $http->get($url);
+
+  if($response->{success} ==1) { # if the response is successful then I get 1
+
+     my $content=$response->{content};     
+     my $json = decode_json($content); # it returns an array reference 
+
+     return $json;
+
+  }else{
+
+      my ($status, $reason) = ($response->{status}, $response->{reason}); #LWP perl library for dealing with http
+      print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ."Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
+      return 0;
+  }
+
+}
+
+
 sub printlabel {   # I want the value of the key-value pair of the metadata to have quotes in the whole string if the value is more than 1 word.
 
    my $string = shift ;
@@ -326,7 +410,7 @@ sub printlabel_key {  # i want they key of the key-value pair of the metadata to
 
 sub getPlantNamesArrayExpressAPI {  # returns reference to a hash
 
-    my $get_plant_names_url= $server . "/getOrganisms/plants" ; # i get all organism names that robert uses for plants to date
+    my $get_plant_names_url= $server_array_express . "/getOrganisms/plants" ; # i get all organism names that robert uses for plants to date
 
     my %robert_plant_names;
 

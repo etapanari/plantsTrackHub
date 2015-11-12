@@ -273,21 +273,20 @@ if ($from_scratch){
    }
 
    my $common_studies_counter=0;
+
    foreach my $common_study (keys %common_studies){  # from the common studies, I want to see which ones were updated from Robert , after I last ran the pipeline. I will update only those ones.
  
          my $roberts_last_processed_unix_time = $studyId_date {$common_study};
 
 	 $common_studies_counter++;
 
-         print $common_studies_counter.".";
+         print $common_studies_counter.".$common_study\n";
          my $study_created_date_unix_time = eval { get_Registry_hub_last_update($common_study); };
 
 	 if ($@) { # if the get_Registry_hub_last_update method fails to return the date of the track hub , then i re-do it anyways to be on the safe side
-           $common_updated_studies {$common_study} = 1;
-	   print "Couldn't get hub update: $@\nupdating hub anyway\n"; 
+           $common_updated_studies {$common_study} = 2;
+	   print "Couldn't get hub update: $@\ngoing to update hub anyway\n"; 
          } elsif ($study_created_date_unix_time) {
-
-           print $common_study."\n";
 
            if( $study_created_date_unix_time < $roberts_last_processed_unix_time ) {
               $common_updated_studies {$common_study}=1;
@@ -312,7 +311,10 @@ if ($from_scratch){
          $line_counter ++;
          print "$line_counter.\tcreating track hub for study $study_id";
          if ($new_studies{$study_id}){
-           print " (new study)\t";
+           print " (new study)";
+         }
+         if($studies_to_be_re_made{$study_id} ==2){
+              print " (Registry unable to give last update date - had to re-do trackhub)";
          }
          print "\t";
 
@@ -476,7 +478,9 @@ if ($from_scratch){
   
   print "\nTotal disc space occupied in $ftp_local_path is:\n $total_disc_space_of_track_hubs\n";
 
-  print "There in total ". give_number_of_dirs_in_ftp(). " files in the ftp server\n\n\n";
+  print "There in total ". give_number_of_dirs_in_ftp(). " files in the ftp server\n\n";
+
+  print "There in total ". scalar (keys %{give_all_Registered_track_hubs()}). " track hubs registered in the Track HUb Registry\n\n\n";
 
 ### methods used 
 
@@ -551,7 +555,7 @@ sub get_Registry_hub_last_update {
 
   my $name = shift;  # track hub name, ie study_id
   
-  my $request = GET("$registry_server/api/trackhub");
+  my $request = GET("$registry_server/api/trackhub/$name");
   $request->headers->header(user       => $registry_user_name);
   $request->headers->header(auth_token => $auth_token);
   my $response = $ua->request($request);
@@ -578,6 +582,7 @@ sub get_Registry_hub_last_update {
        unless $flag_success;
    }
 
+  
   use List::Util qw /first/; 
   my $hub = first { $_->{name} eq $name } @{$trackhubs};
   die "Couldn't find hub $name in the Registry to get the last update date when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n" unless $hub;

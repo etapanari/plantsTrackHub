@@ -17,7 +17,9 @@
   use JSON;
   use DateTime;   
   use Date::Manip;
+  use Time::HiRes;
   use LWP::UserAgent;
+  use HTTP::Request::Common;
 
   my $registry_user_name ;
   my $registry_pwd ;
@@ -32,12 +34,29 @@
      "username=s" => \$registry_user_name ,
      "password=s" => \$registry_pwd,
      "local_ftp_dir_path=s" => \$ftp_local_path,
-     "http_url=s" => \$http_url,   #string
-     "do_track_hubs_from_scratch"  => \$from_scratch# flag
+     "http_url=s" => \$http_url,   # string
+     "do_track_hubs_from_scratch"  => \$from_scratch  # flag
   );
    
-  my $server =  "http://plantain:3000/eg";  # Robert's server where he stores his REST URLs
+ # my $server_array_express =  "http://plantain:3000/eg";  # Robert's server where he stores his REST URLs
   my $http = HTTP::Tiny->new();
+
+###
+
+  my $registry_server = "http://193.62.54.43:3000";
+
+  my $registry_endpoint = '/api/login';
+  my $registry_url = $registry_server.$registry_endpoint; 
+  my $request_to_authorize= GET($registry_url) ;
+
+  $request_to_authorize->headers->authorization_basic($registry_user_name , $registry_pwd);
+  my $response_to_authorize = $ua->request($request_to_authorize);
+
+  my $auth_token = from_json($response_to_authorize->content)->{auth_token};
+  die "Unable to login to Registry in order to get the last update dates of the track hubs, script: ".__FILE__." line: ".__LINE__."\n" unless defined $auth_token;
+
+
+###
 
   my $date_string = localtime();
   print "* Started running the pipeline on:\n";
@@ -56,12 +75,15 @@
   print "\n* I am using this ftp server to eventually build my track hubs:\n\n $http_url\n\n";
   print "* I am using this Registry account:\n\n user:$registry_user_name \n password:$registry_pwd\n\n ";
 
+  $| = 1;  # it flashes the output
+
 if ($from_scratch){
 
   print "\n ******** deleting all track hubs registered in the Registry under my account\n\n";  
   my $delete_script_output = `perl delete_registered_trackhubs.pl -username $registry_user_name -password $registry_pwd -study_id all`  ; 
   print $delete_script_output;
 
+  $| = 1;  # it flashes the output
 
  print "\n ******** deleting everything in directory $ftp_local_path\n\n";
 
@@ -69,7 +91,7 @@ if ($from_scratch){
 
   if($? !=0){ # if ls is successful, it returns 0
  
-      die "I cannot see contents of $ftp_local_path(ls failed)\n";
+      die "I cannot see contents of $ftp_local_path(ls failed) in script: ".__FILE__." line: ".__LINE__."\n";
 
   }
 
@@ -81,9 +103,9 @@ if ($from_scratch){
 
       `rm -r $ftp_local_path/*`;  # removing the track hub files in the ftp server
 
-      if($? !=0){
+      if($? !=0){ # to see if the rm was successful
  
-          print STDERR "ERROR in: track_hub_creation_and_registration_pipeline.pl failed to remove contents of dir $ftp_local_path\n";
+          print STDERR "ERROR: failed to remove contents of dir $ftp_local_path in script: ".__FILE__." line: ".__LINE__."\n";
 
       }else{
 
@@ -94,31 +116,9 @@ if ($from_scratch){
  
 }
 
+  my $ens_genomes_plants_rest_call = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
 
-sub getJsonResponse { # it returns the json response given the url-endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
-
-  my $url = shift; 
-
-  my $response = $http->get($url); 
-
-  if($response->{success} ==1) { # if the response is successful then I get 1
-
-    my $content=$response->{content};      # it prints whatever is the content of the URL, ie the json response
-    my $json = decode_json($content);      # it returns an array reference 
-
-    return $json;
-
-  }else{
-
-      my ($status, $reason) = ($response->{status}, $response->{reason}); 
-      print STDERR "Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
-      return 0;
-  }
-}
-
-  my $rest_call_plants = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
-
-  my @array_response_plants_assemblies = @{getJsonResponse($rest_call_plants)};  
+  my @array_response_plants_assemblies = @{getJsonResponse($ens_genomes_plants_rest_call)};  
 
   my %assName_assAccession;
   my %assAccession_assName;
@@ -148,14 +148,14 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
   }
 
-    my $get_runs_by_organism_endpoint="http://plantain:3000/eg/getLibrariesByOrganism/"; # i get all the runs by organism to date that Robert has processed so far
+  my $get_runs_by_organism_endpoint="http://plantain:3000/eg/getLibrariesByOrganism/"; # i get all the runs by organism to date that Robert has processed so far
 
-    my %robert_plants_done;
-    my %runs; # it stores all distinct run ids
-    my %studies; # it stores all distinct study ids
-    my %studyId_assemblyName; # stores key :study id and value: ensembl assembly name,ie for oryza_sativa it would be IRGSP-1.0
-    my %robert_plant_study;
-    my %studyId_lastProcessedDates;
+  my %robert_plants_done;
+  my %runs; # it stores all distinct run ids
+  my %current_studies; # it stores all distinct study ids
+  my %studyId_assemblyName; # stores key :study id and value: ensembl assembly name,ie for oryza_sativa it would be IRGSP-1.0
+  my %robert_plant_study;
+  my %studyId_lastProcessedDates;
 
 # a line of this call:  http://plantain:3000/eg/getLibrariesByOrganism/oryza_sativa
 #[{"STUDY_ID":"DRP000315","SAMPLE_ID":"SAMD00009891","RUN_ID":"DRR000756","ORGANISM":"oryza_sativa_japonica_group","STATUS":"Complete","ASSEMBLY_USED":"IRGSP-1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 17:39:45",
@@ -163,9 +163,9 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
  foreach my $ens_plant (keys %ens_plant_names) { # i loop through the ensembl plant names to get from Robert all the done studies/runs
 
-     my $url = $get_runs_by_organism_endpoint . $ens_plant;
+     my $array_express_url = $get_runs_by_organism_endpoint . $ens_plant;
 
-     my @get_runs_by_organism_response = @{getJsonResponse($url)};  
+     my @get_runs_by_organism_response = @{getJsonResponse($array_express_url)};  
 
      foreach my $hash_ref (@get_runs_by_organism_response){
 
@@ -176,7 +176,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
          $robert_plants_done{ $hash{"ORGANISM"} }++; 
          $robert_plant_study {$hash{"ORGANISM"} }  {$hash{"STUDY_ID"}} = 1;
          $runs {$hash{"RUN_ID"}} = 1;
-         $studies {$hash {"STUDY_ID"}} = 1 ;
+         $current_studies {$hash {"STUDY_ID"}} = 1 ;
         
          $studyId_assemblyName { $hash {"STUDY_ID"} } { $hash {"ASSEMBLY_USED"} } = 1; # i can have more than one assembly for each study
 
@@ -216,12 +216,13 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
   print "\n ******** starting to make directories and files for the track hubs in the ftp server: $http_url\n\n";
 
-    foreach my $study_id (keys %studyId_assemblyName){ 
+  foreach my $study_id (keys %studyId_assemblyName){ 
 
          $line_counter ++;
-         print "$line_counter.\tcreating track hub for study $study_id\n";  #check if perl create_track_hub.pl is successfully executed??
-        `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
-    }
+         print "$line_counter.\tcreating track hub for study $study_id\t"; 
+         my $script_output= `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+         print $script_output;
+   }
 
    my $date_string2 = localtime();
    print " \n Finished creating the files,directories of the track hubs on the server on:\n";
@@ -231,30 +232,30 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
    }else{ # incremental update
   
-   opendir my($dh),  $ftp_local_path or die "Couldn't open dir ' $ftp_local_path': $!"; # i am getting all the content in the ftp local path - each name of the directory is a study id
-   my @files = readdir $dh;
+   opendir my($dh),  $ftp_local_path or die "Couldn't open dir '$ftp_local_path' in script ".__FILE__." line ".__LINE__." : $!"; # i am getting all the content in the ftp local path - each name of the directory is a study id
+   my @ftp_files = readdir $dh;
    closedir $dh;
 
-   foreach my $file (@files){
+   foreach my $file_name (@ftp_files){
 
-      next if ($file =~/^\./); # because i get also these 2 results from the readdir : .  and ..
-      $studies_last_run_of_pipeline{$file} = 1;
+      next if ($file_name =~/^\./); # because i get also these 2 results from the readdir : .  and ..
+      $studies_last_run_of_pipeline{$file_name} = 1;
 
    }
    
-   foreach my $study_id (keys %studies){ # current studies from Robert that are completed
+   foreach my $study_id (keys %current_studies){ # current studies from Robert that are completed
 
        if(!$studies_last_run_of_pipeline{$study_id}){ # if study is not in the server, then it's a new study I have to make a track hub for
             $new_studies{$study_id} = 1;
        }else{
-            $common_studies {$study_id} = 1 ;
+            $common_studies {$study_id} = 1;
        }
 
    }
    
    foreach my $study_id (keys %studies_last_run_of_pipeline){ # studies in the ftp server from last time I ran the pipeline
 
-       if(!$studies{$study_id}){ # if study is in the server but not in the current list of Robert it means that this study is removed from ENA
+       if(!$current_studies{$study_id}){ # if study is in the server but not in the current list of Robert it means that this study is removed from ENA
             $obsolete_studies{$study_id} = 1;
        }
    }
@@ -262,12 +263,13 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
    if(scalar (keys %obsolete_studies) >0){
       print "**********starting to delete obsolete track hubs from the trackHub Registry and the server:\n\n";
    }else{
-      print "\nThere are not any obsolete track hubs to be removed since the last time the pipeline was ran.\n";
+      print "\nThere are not any obsolete track hubs to be removed since the last time the pipeline was run.\n\n";
    }
 
    foreach my $study_to_remove (keys %obsolete_studies){
 
         `rm -r $ftp_local_path/$study_to_remove` ;  # removal from the server
+
          if($? ==0){ # if rm is successful, i get 0
  
            print "$study_to_remove successfully deleted from the server\n";
@@ -279,29 +281,45 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
  
    }
 
+   my $common_studies_counter=0;
    foreach my $common_study (keys %common_studies){  # from the common studies, I want to see which ones were updated from Robert , after I last ran the pipeline. I will update only those ones.
  
          my $roberts_last_processed_unix_time = $studyId_date {$common_study};
 
-         my $ftp_location_of_study = $http_url ."/$common_study/"; # i want to find the date I last ran the pipeline, I want to get the date from the created date of the files in the ftp server of the track hubs
-         my $index = $ua->get($ftp_location_of_study); 
-         my $string = $index->decoded_content;
-         #-rw-r--r--    1 ftp      ftp           343 Nov 03 16:41 hub.txt
+#          my $ftp_location_of_study = $http_url ."/$common_study/"; # i want to find the date I last ran the pipeline, I want to get the date from the created date of the files in the ftp server of the track hubs
+#          my $index = $ua->get($ftp_location_of_study); 
+#          my $string = $index->decoded_content;
+#          #-rw-r--r--    1 ftp      ftp           343 Nov 03 16:41 hub.txt
+# 
+#          $string =~/.+ (\w+ \d{2} \d+:\d+) hub.txt/;
+# 
+#          my $date=$1 ; #Nov 03 16:41
+# 
+#          my $study_created_date_unix_time = UnixDate( ParseDate($date), "%s" );
+	 $common_studies_counter++;
 
-         $string =~/.+ (\w+ \d{2} \d+:\d+) hub.txt/;
+         print $common_studies_counter.".";
+         my $study_created_date_unix_time = eval { get_Registry_hub_last_update($common_study); };
+	 if ($@) {
+           $common_updated_studies {$common_study} = 1;
+	   print "Couldn't get hub update: $@\nupdating hub anyway\n"; 
+         } elsif ($study_created_date_unix_time) {
+	   #use 5.010;
+	   #use Time::Piece;
 
-         my $date=$1 ; #Nov 03 16:41
+	   #my $date_created_by_me = localtime($study_created_date_unix_time)->strftime('%F %T');
+	   #my $date_created_by_robert = localtime($roberts_last_processed_unix_time)->strftime('%F %T');
+           print $common_study."\n";#"\'$date_created_by_me\'\t\'$date_created_by_robert\'\n";
 
-         my $study_created_date_unix_time = UnixDate( ParseDate($date), "%s" );
-
-         if( $study_created_date_unix_time < $roberts_last_processed_unix_time ) {
-
+           if( $study_created_date_unix_time < $roberts_last_processed_unix_time ) {
               $common_updated_studies {$common_study}=1;
-         }
+           }
+	 } else {
+	   die "I have to really die here since I don't know what happened in script ".__FILE__." line ".__LINE__."\n";
+	 }
    }
-
    
-  } # end of the incremental update
+   } # end of the incremental update
 
     my %studies_to_be_re_made = (%common_updated_studies , %new_studies);
 
@@ -316,12 +334,31 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
          $line_counter ++;
          print "$line_counter.\tcreating track hub for study $study_id";
          if ($new_studies{$study_id}){
-           print " (new study)";
+           print " (new study)\t";
          }
-         print "\n";
-                
-        `rm -r $ftp_local_path/$study_id`; # i first remove it from the server to re-do it
-        `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+         print "\t";
+
+         my $ls_output = `ls $ftp_local_path`  ;
+
+            if($? !=0){ # if ls is successful, it returns 0
+ 
+               die "I cannot ls $ftp_local_path in script: ".__FILE__." line: ".__LINE__."\n";
+
+           }
+
+         if($ls_output=~/$study_id/){ # if it's not a new study it will be in the ftp server, so I have to check
+
+           `rm -r $ftp_local_path/$study_id`; # i first remove it from the server to re-do it
+
+            if($? !=0){ # if touch is successful, it returns 0
+ 
+               die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+
+           }
+         }                
+
+         my $output_script = `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+         print $output_script;
        }
 
        my $date_string2 = localtime();
@@ -331,7 +368,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
         print "\n***********************************\n\n";
     }else{
             if(!$from_scratch){
-               print "\nThere are no updated or new tracks to be made from the last time the pipeline was ran.\n";
+               print "\nThere are no updated or new tracks to be made from the last time the pipeline was run.\n";
             }
     }
 
@@ -360,7 +397,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
                if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
 
-                   print STDERR "ERROR: study $study_id will not be Registered as there is no assembly name \'$assembly_name\' (Robert's call) of study $study_id in my hash from ensemblgenomes REST call: $rest_call_plants \n\n";
+                   print STDERR "ERROR: study $study_id will not be Registered as there is no assembly name \'$assembly_name\' (Robert's call) of study $study_id in my hash from ensemblgenomes REST call: $ens_genomes_plants_rest_call \n\n";
                    next;  # this is for potato (solanum_tuberosum that has an invalid assembly.default name)
                }
                push ( @assembly_names_with_accessions, $assembly_name) ; # this array has only the assembly names that have assembly accessions
@@ -425,10 +462,11 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
     my @words = split(/-/, $date_wrong_order);
     my $current_date = $words[2] . "-". $words[1]. "-". $words[0];  # ie 01-10-2015 (1st October)
-
-    print "\n\nRobert's REST calls give the following stats:\n";
+   
+    print "\n####################################################################################\n";
+    print "\nArray Express REST calls give the following stats:\n";
     print "\nThere are " . scalar (keys %runs) ." plant runs completed to date ( $current_date )\n";
-    print "\nThere are " .scalar (keys %studies) ." plant studies completed to date ( $current_date )\n";
+    print "\nThere are " .scalar (keys %current_studies) ." plant studies completed to date ( $current_date )\n";
 
     print "\n****** Plants done to date: ******\n\n";
 
@@ -449,7 +487,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
 
   print "In total there are " .$counter_ens_plants . " Ensembl plants done to date.\n\n";
-
+  print "####################################################################################\n\n";
 
   my $date_string_end = localtime();
   print " Finished running the pipeline on:\n";
@@ -458,10 +496,110 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
   my $total_disc_space_of_track_hubs = `du -sh $ftp_local_path`;
   
-  print "\ntotal disc space occupied in $ftp_local_path is:\n $total_disc_space_of_track_hubs\n";
+  print "\nTotal disc space occupied in $ftp_local_path is:\n $total_disc_space_of_track_hubs\n";
 
+  print "There in total ". give_number_of_dirs_in_ftp(). " files in the ftp server\n\n\n";
 
 ### methods used 
+
+
+sub getJsonResponse { # it returns the json response given the url-endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
+
+  my $url = shift; 
+
+  my $response = $http->get($url); 
+
+  if($response->{success} ==1) { # if the response is successful then I get 1
+
+    my $content=$response->{content};      # it prints whatever is the content of the URL, ie the json response
+    my $json = decode_json($content);      # it returns an array reference 
+
+    return $json;
+
+  }else{
+
+      my ($status, $reason) = ($response->{status}, $response->{reason}); 
+      print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ."Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
+      return 0;
+  }
+}
+
+
+sub get_Registry_hub_last_update {
+
+  my $name = shift;  # track hub name, ie study_id
+  
+  my $request = GET("$registry_server/api/trackhub");
+  $request->headers->header(user       => $registry_user_name);
+  $request->headers->header(auth_token => $auth_token);
+  my $response = $ua->request($request);
+  my $trackhubs;
+  if ($response->is_success) {
+    $trackhubs = from_json($response->content);
+  } else {  
+
+     print "Couldn't get Registered track hubs with the first attempt when calling method get_Registry_hub_last_update in script ".__FILE__."\n";
+     my $flag_success=0;
+
+     for(my $i=1; $i<=10; $i++) {
+
+       print $i .".Retrying attempt: Retrying after 5s...\n";
+       sleep 5;
+       $response = $ua->request($request);
+       if($response->is_success){
+           $flag_success =1 ;
+           last;
+       }
+     }
+
+     die "Couldn't get list of track hubs in the Registry when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n"
+       unless $flag_success;
+   }
+
+  use List::Util qw /first/; 
+  my $hub = first { $_->{name} eq $name } @{$trackhubs};
+  die "Couldn't find hub $name in the Registry to get the last update date when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n" unless $hub;
+
+  my $last_update = -1;
+
+  foreach my $trackdb (@{$hub->{trackdbs}}) {
+
+    $request = GET($trackdb->{uri});
+    $request->headers->header(user       => $registry_user_name);
+    $request->headers->header(auth_token => $auth_token);
+    $response = $ua->request($request);
+    my $doc;
+    if ($response->is_success) {
+      $doc = from_json($response->content);
+    } else {  
+      die "Couldn't get trackdb at", $trackdb->{uri}." from study $name in the Registry when trying to get the last update date \n";
+    }
+
+    if (exists $doc->{updated}) {
+      $last_update = $doc->{updated}
+	if $last_update < $doc->{updated};
+    } else {
+      exists $doc->{created} or die "Trackdb does not have creation date in the Registry when trying to get the last update date of study $name\n";
+      $last_update = $doc->{created}
+	if $last_update < $doc->{created};
+    }
+  }
+
+  die "Couldn't get date as expected: $last_update\n" unless $last_update =~ /^[1-9]\d+?$/;
+
+  return $last_update;
+}
+
+sub give_number_of_dirs_in_ftp {
+
+  my $ftp_location = $ftp_local_path;
+
+  my @files = `ls $ftp_local_path`;
+
+  return  scalar @files;
+
+}
+
 
 sub getRightAssemblyName { # this method returns the right assembly name in the cases where Robert takes the assembly accession instead of the assembly name due to our bug
 
@@ -487,5 +625,13 @@ sub getRightAssemblyName { # this method returns the right assembly name in the 
       $assembly_name = "SolTub_3.0";
    }
    return $assembly_name;
+
+}
+
+
+sub get_date_latest_date_of_registration_in_registry {
+
+    my $study_id = shift;
+    
 
 }

@@ -232,17 +232,8 @@ if ($from_scratch){
 
    }else{ # incremental update
   
-   opendir my($dh),  $ftp_local_path or die "Couldn't open dir '$ftp_local_path' in script ".__FILE__." line ".__LINE__." : $!"; # i am getting all the content in the ftp local path - each name of the directory is a study id
-   my @ftp_files = readdir $dh;
-   closedir $dh;
+   %studies_last_run_of_pipeline= %{give_all_Registered_track_hubs()};
 
-   foreach my $file_name (@ftp_files){
-
-      next if ($file_name =~/^\./); # because i get also these 2 results from the readdir : .  and ..
-      $studies_last_run_of_pipeline{$file_name} = 1;
-
-   }
-   
    foreach my $study_id (keys %current_studies){ # current studies from Robert that are completed
 
        if(!$studies_last_run_of_pipeline{$study_id}){ # if study is not in the server, then it's a new study I have to make a track hub for
@@ -286,30 +277,17 @@ if ($from_scratch){
  
          my $roberts_last_processed_unix_time = $studyId_date {$common_study};
 
-#          my $ftp_location_of_study = $http_url ."/$common_study/"; # i want to find the date I last ran the pipeline, I want to get the date from the created date of the files in the ftp server of the track hubs
-#          my $index = $ua->get($ftp_location_of_study); 
-#          my $string = $index->decoded_content;
-#          #-rw-r--r--    1 ftp      ftp           343 Nov 03 16:41 hub.txt
-# 
-#          $string =~/.+ (\w+ \d{2} \d+:\d+) hub.txt/;
-# 
-#          my $date=$1 ; #Nov 03 16:41
-# 
-#          my $study_created_date_unix_time = UnixDate( ParseDate($date), "%s" );
 	 $common_studies_counter++;
 
          print $common_studies_counter.".";
          my $study_created_date_unix_time = eval { get_Registry_hub_last_update($common_study); };
-	 if ($@) {
+
+	 if ($@) { # if the get_Registry_hub_last_update method fails to return the date of the track hub , then i re-do it anyways to be on the safe side
            $common_updated_studies {$common_study} = 1;
 	   print "Couldn't get hub update: $@\nupdating hub anyway\n"; 
          } elsif ($study_created_date_unix_time) {
-	   #use 5.010;
-	   #use Time::Piece;
 
-	   #my $date_created_by_me = localtime($study_created_date_unix_time)->strftime('%F %T');
-	   #my $date_created_by_robert = localtime($roberts_last_processed_unix_time)->strftime('%F %T');
-           print $common_study."\n";#"\'$date_created_by_me\'\t\'$date_created_by_robert\'\n";
+           print $common_study."\n";
 
            if( $study_created_date_unix_time < $roberts_last_processed_unix_time ) {
               $common_updated_studies {$common_study}=1;
@@ -524,6 +502,50 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
   }
 }
 
+
+
+sub give_all_Registered_track_hubs{
+
+  my %track_hub_names;
+
+  my $request = GET("$registry_server/api/trackhub");
+  $request->headers->header(user => $registry_user_name);
+  $request->headers->header(auth_token => $auth_token);
+  my $response = $ua->request($request);
+
+  my $response_code= $response->code;
+
+  if($response_code == 200) {
+
+    foreach my $trackhub (@{from_json($response->content)}) {
+
+      foreach my $trackdb (@{$trackhub->{trackdbs}}) {
+         $track_hub_names{$trackhub->{name}}=1;
+      }
+
+   }
+  }else{
+     print "Couldn't get Registered track hubs with the first attempt when calling method give_all_Registered_track_hubs in script ".__FILE__."\n";
+     my $flag_success=0;
+
+     for(my $i=1; $i<=10; $i++) {
+
+       print $i .".Retrying attempt: Retrying after 5s...\n";
+       sleep 5;
+       $response = $ua->request($request);
+       if($response->is_success){
+           $flag_success =1 ;
+           last;
+       }
+     }
+
+     die "Couldn't get list of track hubs in the Registry when calling method give_all_Registered_track_hubs in script: ".__FILE__." line ".__LINE__."\n"
+       unless $flag_success;
+  }
+
+ return \%track_hub_names;
+
+}
 
 sub get_Registry_hub_last_update {
 

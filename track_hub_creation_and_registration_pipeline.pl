@@ -617,7 +617,7 @@
     return $last_update;
   }
 
-  sub give_all_runs_of_study_for_Registry {
+  sub give_all_runs_of_study_from_Registry {
 
     my $name = shift;  # track hub name, ie study_id
   

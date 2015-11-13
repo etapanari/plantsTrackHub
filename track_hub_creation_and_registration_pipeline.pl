@@ -346,7 +346,7 @@
       }                
 
       my $output_script = `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
-        print $output_script;
+      print $output_script;
     }
     if($from_scratch){
       my $date_string2 = localtime();
@@ -450,7 +450,7 @@
   print "\n####################################################################################\n";
   print "\nArray Express REST calls give the following stats:\n";
   print "\nThere are " . scalar (keys %runs) ." plant runs completed to date ( $current_date )\n";
-  print "\nThere are " .scalar (keys %current_studies) ." plant studies completed to date ( $current_date )\n";
+  print "\nThere are " . scalar (keys %current_studies) ." plant studies completed to date ( $current_date )\n";
 
   print "\n****** Plants done to date: ******\n\n";
 
@@ -619,7 +619,7 @@
     return $last_update;
   }
 
-  sub give_all_Runs_of_study {
+  sub give_all_runs_of_study_for_Registry {
 
     my $name = shift;  # track hub name, ie study_id
   
@@ -630,10 +630,12 @@
     my $hub;
 
     if ($response->is_success) {
+
       $hub = from_json($response->content);
+
     } else {  
 
-      print "Couldn't get Registered track hubs with the first attempt when calling method get_Registry_hub_last_update in script ".__FILE__."\n";
+      print "Couldn't get Registered track hubs with the first attempt when calling method give_all_runs_of_study in script ".__FILE__."\n";
       my $flag_success=0;
 
       for(my $i=1; $i<=10; $i++) {
@@ -648,8 +650,8 @@
         }
       }
 
-     die "Couldn't get list of track hubs in the Registry when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n"
-       unless $flag_success;
+      die "Couldn't get list of track hubs in the Registry when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n"
+      unless $flag_success;
     }
 
     die "Couldn't find hub $name in the Registry to get the last update date when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n" 
@@ -664,13 +666,17 @@
       $request->headers->header(auth_token => $auth_token);
       $response = $ua->request($request);
       my $doc;
+
       if ($response->is_success) {
+
         $doc = from_json($response->content);
+
         if (exists $doc->{configuration}) {
 
           my %hash = %{$doc->{configuration}};
 
           foreach my $run_id (keys %hash){
+
             $runs{$run_id}=1;
           }
         }else{

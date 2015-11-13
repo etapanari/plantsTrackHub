@@ -565,6 +565,7 @@ sub get_Registry_hub_last_update {
   $request->headers->header(auth_token => $auth_token);
   my $response = $ua->request($request);
   my $hub;
+
   if ($response->is_success) {
     $hub = from_json($response->content);
   } else {  
@@ -578,6 +579,7 @@ sub get_Registry_hub_last_update {
        sleep 5;
        $response = $ua->request($request);
        if($response->is_success){
+           $hub = from_json($response->content);
            $flag_success =1 ;
            last;
        }

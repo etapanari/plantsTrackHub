@@ -545,7 +545,7 @@
       }
 
       die "Couldn't get list of track hubs in the Registry when calling method give_all_Registered_track_hubs in script: ".__FILE__." line ".__LINE__."\n"
-      unless $flag_success;
+      unless $flag_success ==1;
     }
 
     return \%track_hub_names;
@@ -583,7 +583,7 @@
       }
 
       die "Couldn't get list of track hubs in the Registry when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n"
-      unless $flag_success;
+      unless $flag_success==1;
     }
 
     die "Couldn't find hub $name in the Registry to get the last update date when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n" 
@@ -651,7 +651,7 @@
       }
 
       die "Couldn't get list of track hubs in the Registry when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n"
-      unless $flag_success;
+      unless $flag_success==1;
     }
 
     die "Couldn't find hub $name in the Registry to get the last update date when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n" 

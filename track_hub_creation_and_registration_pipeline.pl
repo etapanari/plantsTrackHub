@@ -1,13 +1,13 @@
-# before I run I set up my PERL5LIB doing 2 things:  ********************************************************
-# PERL5LIB=/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
-# source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
+  # before I run I set up my PERL5LIB doing 2 things:  ********************************************************
+  # PERL5LIB=/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
+  # source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
 
-# or simply:
-#PERL5LIB=/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-variation/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-rest/lib:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-production/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-pipeline/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-hive/modules:/nfs/production/panda/ensemblgenomes/development/tapanari/ensemblgenomes-api/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-funcgen/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-compara/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-analysis/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl/modules:/nfs/production/panda/ensemblgenomes/apis/bioperl/run-stable:/nfs/production/panda/ensemblgenomes/apis/bioperl/stable:/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
+  # or simply:
+  #PERL5LIB=/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-variation/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-rest/lib:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-production/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-pipeline/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-hive/modules:/nfs/production/panda/ensemblgenomes/development/tapanari/ensemblgenomes-api/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-funcgen/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-compara/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-analysis/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl/modules:/nfs/production/panda/ensemblgenomes/apis/bioperl/run-stable:/nfs/production/panda/ensemblgenomes/apis/bioperl/stable:/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
 
-# example run:
-# perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /homes/tapanari/public_html/data/test2  -http_url http://www.ebi.ac.uk/~tapanari/data/test2 > output
-# perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs  -http_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs 1> output 2>errors
+  # example run:
+  # perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /homes/tapanari/public_html/data/test2  -http_url http://www.ebi.ac.uk/~tapanari/data/test2 > output
+  # perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs  -http_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs 1> output 2>errors
 
   use strict ;
   use warnings;
@@ -39,10 +39,10 @@
      "do_track_hubs_from_scratch"  => \$from_scratch  # flag
   );
    
- # my $server_array_express =  "http://plantain:3000/eg";  # Robert's server where he stores his REST URLs
+  # my $server_array_express =  "http://plantain:3000/eg";  # Robert's server where he stores his REST URLs
   my $http = HTTP::Tiny->new();
 
-###
+  ###
 
   my $registry_server = "http://193.62.54.43:3000";
 
@@ -57,7 +57,7 @@
   die "Unable to login to Registry in order to get the last update dates of the track hubs, script: ".__FILE__." line: ".__LINE__."\n" unless defined $auth_token;
 
 
-###
+  ###
 
   my $date_string = localtime();
   print "* Started running the pipeline on:\n";
@@ -509,8 +509,6 @@
       return 0;
     }
   }
-
-
 
   sub give_all_Registered_track_hubs{
 

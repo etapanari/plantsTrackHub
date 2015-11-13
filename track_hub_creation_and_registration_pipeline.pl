@@ -25,7 +25,7 @@
   my $registry_user_name ;
   my $registry_pwd ;
   my $ftp_local_path ; # ie. ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs
-  my $http_url ;  #    ie. /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs;
+  my $http_url ;  # ie. /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs;
 
   my $from_scratch; 
 

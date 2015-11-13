@@ -20,6 +20,7 @@
   use Time::HiRes;
   use LWP::UserAgent;
   use HTTP::Request::Common;
+  use Time::Piece;
 
   my $registry_user_name ;
   my $registry_pwd ;
@@ -232,9 +233,9 @@ if ($from_scratch){
 
    }else{ # incremental update
   
-   %studies_last_run_of_pipeline= %{give_all_Registered_track_hubs()};
+     %studies_last_run_of_pipeline= %{give_all_Registered_track_hubs()};
 
-   foreach my $study_id (keys %current_studies){ # current studies from Robert that are completed
+     foreach my $study_id (keys %current_studies){ # current studies from Robert that are completed
 
        if(!$studies_last_run_of_pipeline{$study_id}){ # if study is not in the server, then it's a new study I have to make a track hub for
             $new_studies{$study_id} = 1;
@@ -242,22 +243,22 @@ if ($from_scratch){
             $common_studies {$study_id} = 1;
        }
 
-   }
+     }
    
-   foreach my $study_id (keys %studies_last_run_of_pipeline){ # studies in the ftp server from last time I ran the pipeline
+     foreach my $study_id (keys %studies_last_run_of_pipeline){ # studies in the ftp server from last time I ran the pipeline
 
        if(!$current_studies{$study_id}){ # if study is in the server but not in the current list of Robert it means that this study is removed from ENA
             $obsolete_studies{$study_id} = 1;
        }
-   }
+    }
 
-   if(scalar (keys %obsolete_studies) >0){
-      print "**********starting to delete obsolete track hubs from the trackHub Registry and the server:\n\n";
-   }else{
-      print "\nThere are not any obsolete track hubs to be removed since the last time the pipeline was run.\n\n";
-   }
+     if(scalar (keys %obsolete_studies) >0){
+        print "**********starting to delete obsolete track hubs from the trackHub Registry and the server:\n\n";
+     }else{
+        print "\nThere are not any obsolete track hubs to be removed since the last time the pipeline was run.\n\n";
+    }
 
-   foreach my $study_to_remove (keys %obsolete_studies){
+    foreach my $study_to_remove (keys %obsolete_studies){
 
         `rm -r $ftp_local_path/$study_to_remove` ;  # removal from the server
 
@@ -270,11 +271,11 @@ if ($from_scratch){
          }
         `perl delete_registered_trackhubs.pl -study_id $study_to_remove  -username $registry_user_name  -password $registry_pwd -study_id  $study_to_remove`; #removal from the registry
  
-   }
+    }
 
-   my $common_studies_counter=0;
+     my $common_studies_counter=0;
 
-   foreach my $common_study (keys %common_studies){  # from the common studies, I want to see which ones were updated from Robert , after I last ran the pipeline. I will update only those ones.
+     foreach my $common_study (keys %common_studies){  # from the common studies, I want to see which ones were updated from Robert , after I last ran the pipeline. I will update only those ones.
  
          my $roberts_last_processed_unix_time = $studyId_date {$common_study};
 
@@ -294,7 +295,7 @@ if ($from_scratch){
 	 } else {
 	   die "I have to really die here since I don't know what happened in script ".__FILE__." line ".__LINE__."\n";
 	 }
-   }
+     }
    
    } # end of the incremental update
 
@@ -315,6 +316,12 @@ if ($from_scratch){
          }
          if($studies_to_be_re_made{$study_id} ==2){
               print " (Registry unable to give last update date - had to re-do trackhub)";
+         }else{
+
+              my $date_registry_last = localtime(get_Registry_hub_last_update($study_id))->strftime('%F %T');
+              my $date_cram_created = localtime($studyId_date{$study_id})->strftime('%F %T');
+
+              print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created ;
          }
          print "\t";
 
@@ -340,11 +347,11 @@ if ($from_scratch){
          my $output_script = `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
          print $output_script;
        }
-
-       my $date_string2 = localtime();
-       print " \n Finished creating the files,directories of the track hubs on the server on:\n";
-       print "Local date,time: $date_string2\n";
-
+       if($from_scratch){
+          my $date_string2 = localtime();
+          print " \n Finished creating the files,directories of the track hubs on the server on:\n";
+          print "Local date,time: $date_string2\n";
+       }
         print "\n***********************************\n\n";
     }else{
             if(!$from_scratch){
@@ -480,7 +487,7 @@ if ($from_scratch){
 
   print "There in total ". give_number_of_dirs_in_ftp(). " files in the ftp server\n\n";
 
-  print "There in total ". scalar (keys %{give_all_Registered_track_hubs()}). " track hubs registered in the Track HUb Registry\n\n\n";
+  print "There in total ". scalar (keys %{give_all_Registered_track_hubs()}). " track hubs registered in the Track Hub Registry\n\n\n";
 
 ### methods used 
 
@@ -520,14 +527,9 @@ sub give_all_Registered_track_hubs{
   my $response_code= $response->code;
 
   if($response_code == 200) {
+    my $trackhubs = from_json($response->content);
+    map { $track_hub_names{$_->{name}} = 1 } @{$trackhubs};
 
-    foreach my $trackhub (@{from_json($response->content)}) {
-
-      foreach my $trackdb (@{$trackhub->{trackdbs}}) {
-         $track_hub_names{$trackhub->{name}}=1;
-      }
-
-   }
   }else{
      print "Couldn't get Registered track hubs with the first attempt when calling method give_all_Registered_track_hubs in script ".__FILE__."\n";
      my $flag_success=0;
@@ -539,6 +541,8 @@ sub give_all_Registered_track_hubs{
        $response = $ua->request($request);
        if($response->is_success){
            $flag_success =1 ;
+           my $trackhubs = from_json($response->content);
+           map { $track_hub_names{$_->{name}} = 1 } @{$trackhubs};
            last;
        }
      }
@@ -551,6 +555,7 @@ sub give_all_Registered_track_hubs{
 
 }
 
+
 sub get_Registry_hub_last_update {
 
   my $name = shift;  # track hub name, ie study_id
@@ -559,9 +564,9 @@ sub get_Registry_hub_last_update {
   $request->headers->header(user       => $registry_user_name);
   $request->headers->header(auth_token => $auth_token);
   my $response = $ua->request($request);
-  my $trackhubs;
+  my $hub;
   if ($response->is_success) {
-    $trackhubs = from_json($response->content);
+    $hub = from_json($response->content);
   } else {  
 
      print "Couldn't get Registered track hubs with the first attempt when calling method get_Registry_hub_last_update in script ".__FILE__."\n";
@@ -582,10 +587,8 @@ sub get_Registry_hub_last_update {
        unless $flag_success;
    }
 
-  
-  use List::Util qw /first/; 
-  my $hub = first { $_->{name} eq $name } @{$trackhubs};
-  die "Couldn't find hub $name in the Registry to get the last update date when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n" unless $hub;
+  die "Couldn't find hub $name in the Registry to get the last update date when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n" 
+    unless $hub;
 
   my $last_update = -1;
 

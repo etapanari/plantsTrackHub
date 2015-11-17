@@ -627,7 +627,7 @@ sub give_all_Registered_track_hubs{
   }else{
 
     print "Couldn't get Registered track hubs with the first attempt when calling method give_all_Registered_track_hubs in script ".__FILE__."\n";
-    printf "Got error %d with error %s %s\n", $response->{status}, $response->{reason}, $response->{error};
+    print "Got error ".$response->{status}. ", " .$response->{reason} ." ," .$response->{error}."\n";
     my $flag_success=0;
 
     for(my $i=1; $i<=10; $i++) {

@@ -1,219 +1,205 @@
-  # before I run I set up my PERL5LIB doing 2 things:  ********************************************************
-  # PERL5LIB=/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
-  # source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
+# before I run I set up my PERL5LIB doing 2 things:  ********************************************************
+# PERL5LIB=/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
+# source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
 
-  # or simply:
-  #PERL5LIB=/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-variation/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-rest/lib:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-production/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-pipeline/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-hive/modules:/nfs/production/panda/ensemblgenomes/development/tapanari/ensemblgenomes-api/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-funcgen/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-compara/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-analysis/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl/modules:/nfs/production/panda/ensemblgenomes/apis/bioperl/run-stable:/nfs/production/panda/ensemblgenomes/apis/bioperl/stable:/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
+# or simply:
+#PERL5LIB=/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-variation/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-rest/lib:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-production/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-pipeline/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-hive/modules:/nfs/production/panda/ensemblgenomes/development/tapanari/ensemblgenomes-api/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-funcgen/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-compara/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-analysis/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl/modules:/nfs/production/panda/ensemblgenomes/apis/bioperl/run-stable:/nfs/production/panda/ensemblgenomes/apis/bioperl/stable:/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
 
-  # example run:
-  # perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /homes/tapanari/public_html/data/test2  -http_url http://www.ebi.ac.uk/~tapanari/data/test2 > output
-  # perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs  -http_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs 1> output 2>errors
+# example run:
+# perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /homes/tapanari/public_html/data/test2  -http_url http://www.ebi.ac.uk/~tapanari/data/test2 > output
+# perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs  -http_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs 1> output 2>errors
 
-  use strict ;
-  use warnings;
+use strict ;
+use warnings;
 
-  use HTTP::Tiny;
-  use Getopt::Long;
-  use JSON;
-  use DateTime;   
-  use Date::Manip;
-  use Time::HiRes;
-  use LWP::UserAgent;
-  use HTTP::Request::Common;
-  use Time::Piece;
+use HTTP::Tiny;
+use Getopt::Long;
+use JSON;
+use DateTime;   
+use Date::Manip;
+use Time::HiRes;
+use LWP::UserAgent;
+use HTTP::Request::Common;
+use Time::Piece;
 
-  my $registry_user_name ;
-  my $registry_pwd ;
-  my $ftp_local_path ; # ie. ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs
-  my $http_url ;  # ie. /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs;
+my $registry_user_name ;
+my $registry_pwd ;
+my $ftp_local_path ; # ie. ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs
+my $http_url ;  # ie. /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs;
 
-  my $from_scratch; 
+my $from_scratch; 
 
-  my $ua = LWP::UserAgent->new;
+#my $ua = LWP::UserAgent->new;
 
-  GetOptions(
-     "username=s" => \$registry_user_name ,
-     "password=s" => \$registry_pwd,
-     "local_ftp_dir_path=s" => \$ftp_local_path,
-     "http_url=s" => \$http_url,   # string
-     "do_track_hubs_from_scratch"  => \$from_scratch  # flag
-  );
+GetOptions(
+  "username=s" => \$registry_user_name ,
+  "password=s" => \$registry_pwd,
+  "local_ftp_dir_path=s" => \$ftp_local_path,
+  "http_url=s" => \$http_url,   # string
+  "do_track_hubs_from_scratch"  => \$from_scratch  # flag
+);
    
-  # my $server_array_express =  "http://plantain:3000/eg";  # Robert's server where he stores his REST URLs
-  my $http = HTTP::Tiny->new();
+#my $server_array_express =  "http://plantain:3000/eg";  # Robert's server where he stores his REST URLs
+my $http = HTTP::Tiny->new();
+my $registry_server = "http://193.62.54.43:5000";
 
-  ###
-
-  my $registry_server = "http://193.62.54.43:3000";
-
-  my $registry_endpoint = '/api/login';
-  my $registry_url = $registry_server.$registry_endpoint; 
-  my $request_to_authorize= GET($registry_url) ;
-
-  $request_to_authorize->headers->authorization_basic($registry_user_name , $registry_pwd);
-  my $response_to_authorize = $ua->request($request_to_authorize);
-
-  my $auth_token = from_json($response_to_authorize->content)->{auth_token};
-  die "Unable to login to Registry in order to get the last update dates of the track hubs, script: ".__FILE__." line: ".__LINE__."\n" unless defined $auth_token;
+my $date_string = localtime();
+print "* Started running the pipeline on:\n";
+print "Local date,time: $date_string\n";
 
 
-  ###
-
-  my $date_string = localtime();
-  print "* Started running the pipeline on:\n";
-  print "Local date,time: $date_string\n";
-
-
-  print "\n* Ran this pipeline:\n\n";
-  print "perl track_hub_creation_and_registration_pipeline.pl  -username $registry_user_name -password $registry_pwd -local_ftp_dir_path $ftp_local_path -http_url $http_url";
-  if($from_scratch){
-    print " -do_track_hubs_from_scratch\n";
-  } else{
-    print "\n";
-  }
+print "\n* Ran this pipeline:\n\n";
+print "perl track_hub_creation_and_registration_pipeline.pl  -username $registry_user_name -password $registry_pwd -local_ftp_dir_path $ftp_local_path -http_url $http_url";
+if($from_scratch){
+  print " -do_track_hubs_from_scratch\n";
+} else{
+  print "\n";
+}
 
 
-  print "\n* I am using this ftp server to eventually build my track hubs:\n\n $http_url\n\n";
-  print "* I am using this Registry account:\n\n user:$registry_user_name \n password:$registry_pwd\n\n ";
+print "\n* I am using this ftp server to eventually build my track hubs:\n\n $http_url\n\n";
+print "* I am using this Registry account:\n\n user:$registry_user_name \n password:$registry_pwd\n\n ";
+
+$| = 1;  # it flashes the output
+
+if ($from_scratch){
+
+  print "\n ******** deleting all track hubs registered in the Registry under my account\n\n";  
+  my $delete_script_output = `perl delete_registered_trackhubs.pl -username $registry_user_name -password $registry_pwd -study_id all`  ; 
+  print $delete_script_output;
 
   $| = 1;  # it flashes the output
 
-  if ($from_scratch){
+  print "\n ******** deleting everything in directory $ftp_local_path\n\n";
 
-    print "\n ******** deleting all track hubs registered in the Registry under my account\n\n";  
-    my $delete_script_output = `perl delete_registered_trackhubs.pl -username $registry_user_name -password $registry_pwd -study_id all`  ; 
-    print $delete_script_output;
+  my $ls_output = `ls $ftp_local_path`  ;
 
-    $| = 1;  # it flashes the output
-
-    print "\n ******** deleting everything in directory $ftp_local_path\n\n";
-
-    my $ls_output = `ls $ftp_local_path`  ;
-
-    if($? !=0){ # if ls is successful, it returns 0
+  if($? !=0){ # if ls is successful, it returns 0
  
-      die "I cannot see contents of $ftp_local_path(ls failed) in script: ".__FILE__." line: ".__LINE__."\n";
+    die "I cannot see contents of $ftp_local_path(ls failed) in script: ".__FILE__." line: ".__LINE__."\n";
 
-    }
-
-    if(!$ls_output){  # check if there are files inside the directory
-
-      print "Directory $ftp_local_path is empty - No need for deletion\n";
-
-    } else{ # directory is not empty
-
-      `rm -r $ftp_local_path/*`;  # removing the track hub files in the ftp server
-
-      if($? !=0){ # to see if the rm was successful
- 
-        print STDERR "ERROR: failed to remove contents of dir $ftp_local_path in script: ".__FILE__." line: ".__LINE__."\n";
-
-      }else{
-
-        print "Successfully deleted all content of $ftp_local_path\n";
-      }
-
-    }
- 
   }
 
-  my $ens_genomes_plants_rest_call = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
+  if(!$ls_output){  # check if there are files inside the directory
 
-  my @array_response_plants_assemblies = @{getJsonResponse($ens_genomes_plants_rest_call)};  
+    print "Directory $ftp_local_path is empty - No need for deletion\n";
 
-  my %assName_assAccession;
-  my %assAccession_assName;
-  my %ens_plant_names;
+  } else{ # directory is not empty
 
-  # response:
-  #[{"base_count":"479985347","is_reference":null,"division":"EnsemblPlants","has_peptide_compara":"1","dbname":"physcomitrella_patens_core_28_81_11","genebuild":"2011-03-JGI","assembly_level":"scaffold","serotype":null,
-  #"has_pan_compara":"1","has_variations":"0","name":"Physcomitrella patens","has_other_alignments":"1","species":"physcomitrella_patens","assembly_name":"ASM242v1","taxonomy_id":"3218","species_id":"1",
-  #"assembly_id":"GCA_000002425.1","strain":"ssp. patens str. Gransden 2004","has_genome_alignments":"1","species_taxonomy_id":"3218"},
+    `rm -r $ftp_local_path/*`;  # removing the track hub files in the ftp server
+
+    if($? !=0){ # to see if the rm was successful
+ 
+      print STDERR "ERROR: failed to remove contents of dir $ftp_local_path in script: ".__FILE__." line: ".__LINE__."\n";
+
+    }else{
+
+      print "Successfully deleted all content of $ftp_local_path\n";
+    }
+
+  }
+ 
+}
+
+my $ens_genomes_plants_rest_call = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
+
+my @array_response_plants_assemblies = @{getJsonResponse($ens_genomes_plants_rest_call)};  
+
+my %assName_assAccession;
+my %assAccession_assName;
+my %ens_plant_names;
+
+# response:
+#[{"base_count":"479985347","is_reference":null,"division":"EnsemblPlants","has_peptide_compara":"1","dbname":"physcomitrella_patens_core_28_81_11","genebuild":"2011-03-JGI","assembly_level":"scaffold","serotype":null,
+#"has_pan_compara":"1","has_variations":"0","name":"Physcomitrella patens","has_other_alignments":"1","species":"physcomitrella_patens","assembly_name":"ASM242v1","taxonomy_id":"3218","species_id":"1",
+#"assembly_id":"GCA_000002425.1","strain":"ssp. patens str. Gransden 2004","has_genome_alignments":"1","species_taxonomy_id":"3218"},
 
 
-  foreach my $hash_ref (@array_response_plants_assemblies){
+foreach my $hash_ref (@array_response_plants_assemblies){
+
+  my %hash = %{$hash_ref};
+
+  $ens_plant_names {$hash {"species"}} = 1; # there are 39 Ens plant species at the moment Nov 2015
+
+  if(! $hash{"assembly_id"}){  # some species don't have assembly id, ie assembly accession, 
+    #  3 plant species don't have assembly accession: triticum_aestivum, oryza_longistaminata and oryza_rufipogon 
+
+    $assName_assAccession  {$hash{"assembly_name"}} =  "0000";
+    next;
+  }
+
+  $assName_assAccession  {$hash{"assembly_name"} } = $hash{"assembly_id"};
+  $assAccession_assName  {$hash{"assembly_id"} } = $hash{"assembly_name"};
+
+}
+
+my $get_runs_by_organism_endpoint="http://plantain:3000/eg/getLibrariesByOrganism/"; # i get all the runs by organism to date that Robert has processed so far
+
+my %robert_plants_done;
+my %runs; # it stores all distinct run ids
+my %current_studies; # it stores all distinct study ids
+my %studyId_assemblyName; # stores key :study id and value: ensembl assembly name,ie for oryza_sativa it would be IRGSP-1.0
+my %robert_plant_study;
+my %studyId_lastProcessedDates;
+my %study_Id_runId;
+
+# a line of this call:  http://plantain:3000/eg/getLibrariesByOrganism/oryza_sativa
+#[{"STUDY_ID":"DRP000315","SAMPLE_ID":"SAMD00009891","RUN_ID":"DRR000756","ORGANISM":"oryza_sativa_japonica_group","STATUS":"Complete","ASSEMBLY_USED":"IRGSP-1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 17:39:45",
+#"LAST_PROCESSED_DATE":"Sat Sep 05 2015 22:40:36","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000756/DRR000756.cram"},
+
+foreach my $ens_plant (keys %ens_plant_names) { # i loop through the ensembl plant names to get from Robert all the done studies/runs
+
+  my $array_express_url = $get_runs_by_organism_endpoint . $ens_plant;
+
+  my @get_runs_by_organism_response = @{getJsonResponse($array_express_url)};  
+
+  foreach my $hash_ref (@get_runs_by_organism_response){
 
     my %hash = %{$hash_ref};
 
-    $ens_plant_names {$hash {"species"}} = 1; # there are 39 Ens plant species at the moment Nov 2015
+    next unless($hash{"STATUS"} eq "Complete"); 
 
-    if(! $hash{"assembly_id"}){  # some species don't have assembly id, ie assembly accession, 
-      #  3 plant species don't have assembly accession: triticum_aestivum, oryza_longistaminata and oryza_rufipogon 
-
-      $assName_assAccession  {$hash{"assembly_name"}} =  "0000";
-      next;
-    }
-
-    $assName_assAccession  {$hash{"assembly_name"} } = $hash{"assembly_id"};
-    $assAccession_assName  {$hash{"assembly_id"} } = $hash{"assembly_name"};
-
-  }
-
-  my $get_runs_by_organism_endpoint="http://plantain:3000/eg/getLibrariesByOrganism/"; # i get all the runs by organism to date that Robert has processed so far
-
-  my %robert_plants_done;
-  my %runs; # it stores all distinct run ids
-  my %current_studies; # it stores all distinct study ids
-  my %studyId_assemblyName; # stores key :study id and value: ensembl assembly name,ie for oryza_sativa it would be IRGSP-1.0
-  my %robert_plant_study;
-  my %studyId_lastProcessedDates;
-
-  # a line of this call:  http://plantain:3000/eg/getLibrariesByOrganism/oryza_sativa
-  #[{"STUDY_ID":"DRP000315","SAMPLE_ID":"SAMD00009891","RUN_ID":"DRR000756","ORGANISM":"oryza_sativa_japonica_group","STATUS":"Complete","ASSEMBLY_USED":"IRGSP-1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 17:39:45",
-  #"LAST_PROCESSED_DATE":"Sat Sep 05 2015 22:40:36","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000756/DRR000756.cram"},
-
-  foreach my $ens_plant (keys %ens_plant_names) { # i loop through the ensembl plant names to get from Robert all the done studies/runs
-
-    my $array_express_url = $get_runs_by_organism_endpoint . $ens_plant;
-
-    my @get_runs_by_organism_response = @{getJsonResponse($array_express_url)};  
-
-    foreach my $hash_ref (@get_runs_by_organism_response){
-
-      my %hash = %{$hash_ref};
-
-      next unless($hash{"STATUS"} eq "Complete"); 
-
-      $robert_plants_done{ $hash{"ORGANISM"} }++; 
-      $robert_plant_study {$hash{"ORGANISM"} }  {$hash{"STUDY_ID"}} = 1;
-      $runs {$hash{"RUN_ID"}} = 1;
-      $current_studies {$hash {"STUDY_ID"}} = 1 ;
+    $robert_plants_done{ $hash{"ORGANISM"} }++; 
+    $robert_plant_study {$hash{"ORGANISM"} }  {$hash{"STUDY_ID"}} = 1;
+    $runs {$hash{"RUN_ID"}} = 1;
+    $current_studies {$hash {"STUDY_ID"}} = 1 ;
         
-      $studyId_assemblyName { $hash {"STUDY_ID"} } { $hash {"ASSEMBLY_USED"} } = 1; # i can have more than one assembly for each study
+    $studyId_assemblyName { $hash {"STUDY_ID"} } { $hash {"ASSEMBLY_USED"} } = 1; # i can have more than one assembly for each study
 
-      $studyId_lastProcessedDates { $hash {"STUDY_ID"} } { $hash {"LAST_PROCESSED_DATE"} } =1 ;  # i get different last processed dates from different the runs of the study
+    $studyId_lastProcessedDates { $hash {"STUDY_ID"} } { $hash {"LAST_PROCESSED_DATE"} } =1 ;  # i get different last processed dates from different the runs of the study
+    $study_Id_runId { $hash{"STUDY_ID"} } { $hash{"RUN_ID"} } = 1;
         
-    }
   }
+}
 
-  my %studyId_date;
+my %studyId_date;
  
  
-  foreach my $study_id (keys %studyId_lastProcessedDates ){  
-  #each study has more than 1 processed date, as there are usually multiple runs in each study with different processed date each. I want to get the most current date
+foreach my $study_id (keys %studyId_lastProcessedDates ){  
+#each study has more than 1 processed date, as there are usually multiple runs in each study with different processed date each. I want to get the most current date
 
-    my $max_date=0;
-    foreach my $date (keys %{$studyId_lastProcessedDates {$study_id}}){
+  my $max_date=0;
+  foreach my $date (keys %{$studyId_lastProcessedDates {$study_id}}){
 
-      my $unix_time = UnixDate( ParseDate($date), "%s" );
+    my $unix_time = UnixDate( ParseDate($date), "%s" );
 
-      if($unix_time > $max_date){
-        $max_date = $unix_time ;
-      }
+    if($unix_time > $max_date){
+      $max_date = $unix_time ;
     }
-
-    $studyId_date {$study_id} = $max_date ;
-
   }
 
-  my $line_counter = 0;
-  my %studies_last_run_of_pipeline;
-  my %obsolete_studies;
-  my %common_studies;
-  my %common_updated_studies;
-  my %new_studies;
+  $studyId_date {$study_id} = $max_date ;
 
-  if($from_scratch) {
+}
+
+my $line_counter = 0;
+my %studies_last_run_of_pipeline;
+my %obsolete_studies;
+my %common_studies;
+my %common_updated_studies;
+my %new_studies;
+
+if($from_scratch) {
 
   print "\n ******** starting to make directories and files for the track hubs in the ftp server: $http_url\n\n";
 
@@ -232,73 +218,101 @@
 
   print "\n***********************************\n\n";
 
-  }else{ # incremental update
+}else{ # incremental update
   
-    %studies_last_run_of_pipeline= %{give_all_Registered_track_hubs()};
+  %studies_last_run_of_pipeline= %{give_all_Registered_track_hubs()};
 
-    foreach my $study_id (keys %current_studies){ # current studies from Robert that are completed
+  foreach my $study_id (keys %current_studies){ # current studies from Robert that are completed
 
-      if(!$studies_last_run_of_pipeline{$study_id}){ # if study is not in the server, then it's a new study I have to make a track hub for
-        $new_studies{$study_id} = 1;
-      }else{
-        $common_studies {$study_id} = 1;
-      }
-
-    }
-   
-    foreach my $study_id (keys %studies_last_run_of_pipeline){ # studies in the ftp server from last time I ran the pipeline
-
-      if(!$current_studies{$study_id}){ # if study is in the server but not in the current list of Robert it means that this study is removed from ENA
-        $obsolete_studies{$study_id} = 1;
-      }
-    }
-
-    if(scalar (keys %obsolete_studies) >0){
-      print "**********starting to delete obsolete track hubs from the trackHub Registry and the server:\n\n";
+    if(!$studies_last_run_of_pipeline{$study_id}){ # if study is not in the server, then it's a new study I have to make a track hub for
+      $new_studies{$study_id} = 1;
     }else{
-      print "\nThere are not any obsolete track hubs to be removed since the last time the pipeline was run.\n\n";
+      $common_studies {$study_id} = 1;
     }
 
-    foreach my $study_to_remove (keys %obsolete_studies){
-
-      `rm -r $ftp_local_path/$study_to_remove` ;  # removal from the server
-
-      if($? ==0){ # if rm is successful, i get 0
- 
-        print "$study_to_remove successfully deleted from the server\n";
-
-      }else{
-        print "$study_to_remove could not be deleted from the server\n";
-      }
-      `perl delete_registered_trackhubs.pl -study_id $study_to_remove  -username $registry_user_name  -password $registry_pwd -study_id  $study_to_remove`; #removal from the registry
- 
-    }
-
-    my $common_studies_counter=0;
-
-    foreach my $common_study (keys %common_studies){  # from the common studies, I want to see which ones were updated from Robert , after I last ran the pipeline. I will update only those ones.
- 
-      my $roberts_last_processed_unix_time = $studyId_date {$common_study};
-
-      $common_studies_counter++;
-
-      print $common_studies_counter.".$common_study\n";
-      my $study_created_date_unix_time = eval { get_Registry_hub_last_update($common_study); };
-
-      if ($@) { # if the get_Registry_hub_last_update method fails to return the date of the track hub , then i re-do it anyways to be on the safe side
-        $common_updated_studies {$common_study} = 2;
-	print "Couldn't get hub update: $@\ngoing to update hub anyway\n"; 
-      }elsif($study_created_date_unix_time) {
-
-        if( $study_created_date_unix_time < $roberts_last_processed_unix_time ) {
-          $common_updated_studies {$common_study}=1;
-        }
-      } else {
-	die "I have to really die here since I don't know what happened in script ".__FILE__." line ".__LINE__."\n";
-      } 
-    }
+  }
    
-  } # end of the incremental update
+  foreach my $study_id (keys %studies_last_run_of_pipeline){ # studies in the ftp server from last time I ran the pipeline
+
+    if(!$current_studies{$study_id}){ # if study is in the server but not in the current list of Robert it means that this study is removed from ENA
+      $obsolete_studies{$study_id} = 1;
+    }
+  }
+
+  if(scalar (keys %obsolete_studies) >0){
+
+    print "**********starting to delete obsolete track hubs from the trackHub Registry and the server:\n\n";
+
+  }else{
+    print "\nThere are not any obsolete track hubs to be removed since the last time the pipeline was run.\n\n";
+  }
+
+  foreach my $study_to_remove (keys %obsolete_studies){
+
+    `rm -r $ftp_local_path/$study_to_remove` ;  # removal from the server
+
+    if($? ==0){ # if rm is successful, i get 0
+ 
+      print "$study_to_remove successfully deleted from the server\n";
+
+    }else{
+      print "$study_to_remove could not be deleted from the server\n";
+    }
+    `perl delete_registered_trackhubs.pl -study_id $study_to_remove  -username $registry_user_name  -password $registry_pwd -study_id  $study_to_remove`; #removal from the registry
+ 
+  }
+
+    #my $common_studies_counter=0;
+
+  foreach my $common_study (keys %common_studies){  # from the common studies, I want to see which ones were updated from Robert , after I last ran the pipeline. I will update only those ones.
+ 
+    my $roberts_last_processed_unix_time = $studyId_date {$common_study};
+
+    #$common_studies_counter++;
+
+    #print $common_studies_counter.".$common_study\n";
+    my $study_created_date_unix_time = eval { get_Registry_hub_last_update($common_study); };
+
+    if ($@) { # if the get_Registry_hub_last_update method fails to return the date of the track hub , then i re-do it anyways to be on the safe side
+
+      my @table;
+      $table[0]= "registry_no_response";
+      $common_updated_studies {$common_study} = \@table;
+      print "Couldn't get hub update: $@\ngoing to update hub anyway\n"; 
+
+    }elsif($study_created_date_unix_time) {
+
+      # I want to check also if the runs of the common study are the same in the Registry and in Array Express:
+
+      my %runs_in_Registry = %{give_all_runs_of_study_from_Registry($common_study)};
+      my %runs_in_Array_Express = %{$study_Id_runId {$common_study}} ;
+      my @runs_numbers_holder;
+      $runs_numbers_holder[1]= scalar (keys %runs_in_Registry);
+      $runs_numbers_holder[2]= scalar (keys %runs_in_Array_Express);
+
+      my $are_runs_the_same = hash_keys_are_equal(%runs_in_Registry,%runs_in_Array_Express); # returns 0 id they are not equal, 1 if they are
+        
+      if( $study_created_date_unix_time < $roberts_last_processed_unix_time or $are_runs_the_same ==0) { # if the study has now different runs it needs to be updated
+
+        if( $study_created_date_unix_time < $roberts_last_processed_unix_time and $are_runs_the_same ==1){
+          $runs_numbers_holder[0] = "diff_time_only";
+          $common_updated_studies {$common_study}=\@runs_numbers_holder;
+        }
+        if ( $study_created_date_unix_time == $roberts_last_processed_unix_time and $are_runs_the_same ==0) { # different number of runs
+          $runs_numbers_holder[0] = "diff_number_runs_only";
+          $common_updated_studies {$common_study}=\@runs_numbers_holder;
+        }
+        if( $study_created_date_unix_time < $roberts_last_processed_unix_time and $are_runs_the_same ==0){
+          $runs_numbers_holder[0] = "diff_number_runs_diff_time";
+          $common_updated_studies {$common_study}=\@runs_numbers_holder;
+        }
+      }
+    } else {
+      die "I have to really die here since I don't know what happened in script ".__FILE__." line ".__LINE__."\n";
+    } 
+  }
+   
+} # end of the incremental update  # identation until here
 
   my %studies_to_be_re_made = (%common_updated_studies , %new_studies);
 
@@ -315,14 +329,32 @@
       if ($new_studies{$study_id}){
         print " (new study)";
       }
-      if($studies_to_be_re_made{$study_id} ==2){
-        print " (Registry unable to give last update date - had to re-do trackhub)";
-      }else{
+      if (ref($studies_to_be_re_made{$study_id}) eq 'ARRAY' ){
+      
+        my @table_content = @{$studies_to_be_re_made{$study_id}};
 
-      my $date_registry_last = localtime(get_Registry_hub_last_update($study_id))->strftime('%F %T');
-      my $date_cram_created = localtime($studyId_date{$study_id})->strftime('%F %T');
+        if($table_content[0] eq "registry_no_response"){
 
-      print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created ;
+          print " (Registry unable to give last update date - had to re-do trackhub)";
+
+        }elsif($table_content[0] eq "diff_number_runs_only") {
+
+          print " (Different number of runs: Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")";
+
+        }elsif($table_content[0] eq "diff_time_only") {
+
+          my $date_registry_last = localtime(get_Registry_hub_last_update($study_id))->strftime('%F %T');
+          my $date_cram_created = localtime($studyId_date{$study_id})->strftime('%F %T');
+
+          print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created .")";
+
+        }elsif($table_content[0] eq "diff_number_runs_diff_time"){
+
+          my $date_registry_last = localtime(get_Registry_hub_last_update($study_id))->strftime('%F %T');
+          my $date_cram_created = localtime($studyId_date{$study_id})->strftime('%F %T');
+
+          print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created . " and also different number of runs: "." Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")"; ;
+        }
       }
       print "\t";
 
@@ -482,257 +514,356 @@
   
   print "\nTotal disc space occupied in $ftp_local_path is:\n $total_disc_space_of_track_hubs\n";
 
-  print "There in total ". give_number_of_dirs_in_ftp(). " files in the ftp server\n\n";
+  print "There are in total ". give_number_of_dirs_in_ftp(). " files in the ftp server\n\n";
 
-  print "There in total ". scalar (keys %{give_all_Registered_track_hubs()}). " track hubs registered in the Track Hub Registry\n\n\n";
+  my %track_hubs =%{give_all_Registered_track_hubs()};
+  my $total_number_of_runs=0;
+  my $counter_total_registered_track_hubs= scalar keys %track_hubs;
+
+  foreach my $hub_name (keys %track_hubs){
+
+    my %runs = %{give_all_runs_of_study_from_Registry($hub_name)};
+    $total_number_of_runs+=scalar (keys %runs);
+
+  }
+
+  print "There in total ". $counter_total_registered_track_hubs. " track hubs with total $total_number_of_runs runs registered in the Track Hub Registry\n\n\n";
+
+
 
 ### methods used 
 
 
-  sub getJsonResponse { # it returns the json response given the url-endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
+sub getJsonResponse { # it returns the json response given the url-endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
 
-    my $url = shift; 
+  my $url = shift; 
 
-    my $response = $http->get($url); 
+  my $response = $http->get($url); 
 
-    if($response->{success} ==1) { # if the response is successful then I get 1
+  if($response->{success} ==1) { # if the response is successful then I get 1
 
-      my $content=$response->{content};      # it prints whatever is the content of the URL, ie the json response
-      my $json = decode_json($content);      # it returns an array reference 
+    my $content=$response->{content};      # it prints whatever is the content of the URL, ie the json response
+    my $json = decode_json($content);      # it returns an array reference 
 
-      return $json;
+    return $json;
 
-    }else{
+  }else{
 
-      my ($status, $reason) = ($response->{status}, $response->{reason}); 
-      print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ."Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
-      return 0;
-    }
+    my ($status, $reason) = ($response->{status}, $response->{reason}); 
+    print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ."Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
+    return 0;
   }
-
-  sub give_all_Registered_track_hubs{
-
-    my %track_hub_names;
-
-    my $request = GET("$registry_server/api/trackhub");
-    $request->headers->header(user => $registry_user_name);
-    $request->headers->header(auth_token => $auth_token);
-    my $response = $ua->request($request);
-
-    my $response_code= $response->code;
-
-    if($response_code == 200) {
-      my $trackhubs = from_json($response->content);
-      map { $track_hub_names{$_->{name}} = 1 } @{$trackhubs};
-
-    }else{
-      print "Couldn't get Registered track hubs with the first attempt when calling method give_all_Registered_track_hubs in script ".__FILE__."\n";
-      my $flag_success=0;
-
-      for(my $i=1; $i<=10; $i++) {
-
-        print $i .".Retrying attempt: Retrying after 5s...\n";
-        sleep 5;
-        $response = $ua->request($request);
-        if($response->is_success){
-          $flag_success =1 ;
-          my $trackhubs = from_json($response->content);
-          map { $track_hub_names{$_->{name}} = 1 } @{$trackhubs};
-          last;
-        }
-      }
-
-      die "Couldn't get list of track hubs in the Registry when calling method give_all_Registered_track_hubs in script: ".__FILE__." line ".__LINE__."\n"
-      unless $flag_success ==1;
-    }
-
-    return \%track_hub_names;
-
-  }
+}
 
 
-  sub get_Registry_hub_last_update {
+sub registry_login {
 
-    my $name = shift;  # track hub name, ie study_id
+  my ($server, $user, $pass) = @_;
+  defined $server and defined $user and defined $pass
+    or die "Some required parameters are missing when trying to login in the Track Hub Registry\n";
   
-    my $request = GET("$registry_server/api/trackhub/$name");
+  my $ua = LWP::UserAgent->new;
+  my $endpoint = '/api/login';
+  my $url = $server.$endpoint; 
+
+  my $request = GET($url);
+  $request->headers->authorization_basic($user, $pass);
+
+  my $response = $ua->request($request);
+  my $auth_token;
+
+  if ($response->is_success) {
+    $auth_token = from_json($response->content)->{auth_token};
+  } else {
+    die "Unable to login to Registry, reason: " .$response->code ." , ". $response->content."\n";
+  }
+  
+  defined $auth_token or die "Undefined authentication token when trying to login in the Track Hub Registry\n";
+  return $auth_token;
+
+}
+
+sub registry_logout {
+
+  my ($server, $user, $auth_token) = @_;
+  defined $server and defined $user and defined $auth_token
+    or die "Some required parameters are missing when trying to log out from the Track Hub Registry\n";
+  
+  my $ua = LWP::UserAgent->new;
+  my $request = GET("$server/api/logout");
+  $request->headers->header(user => $user);
+  $request->headers->header(auth_token => $auth_token);
+  my $response = $ua->request($request);
+
+  if (!$response->is_success) {
+    die "Couldn't log out from the registry\n";
+  } 
+  return;
+}
+
+
+sub give_all_Registered_track_hubs{
+
+  my %track_hub_names;
+
+  my $auth_token = eval { registry_login($registry_server, $registry_user_name, $registry_pwd); };
+  if ($@) {
+    print "Couldn't login, skipping getting all registered trackhubs\n";
+    return;
+  }
+
+  my $ua = LWP::UserAgent->new;
+  my $request = GET("$registry_server/api/trackhub");
+  $request->headers->header(user => $registry_user_name);
+  $request->headers->header(auth_token => $auth_token);
+  my $response = $ua->request($request);
+
+  my $response_code= $response->code;
+
+  if($response_code == 200) {
+    my $trackhubs = from_json($response->content);
+    map { $track_hub_names{$_->{name}} = 1 } @{$trackhubs}; # it is same as : $track_hub_names{$trackhubs->[$i]{name}}=1; 
+
+  }else{
+
+    print "Couldn't get Registered track hubs with the first attempt when calling method give_all_Registered_track_hubs in script ".__FILE__."\n";
+    printf "Got error %d with error %s %s\n", $response->{status}, $response->{reason}, $response->{error};
+    my $flag_success=0;
+
+    for(my $i=1; $i<=10; $i++) {
+
+      print $i .".Retrying attempt: Retrying after 5s...\n";
+      sleep 5;
+      $response = $ua->request($request);
+      if($response->is_success){
+        $flag_success =1 ;
+        my $trackhubs = from_json($response->content);
+        map { $track_hub_names{$_->{name}} = 1 } @{$trackhubs};
+        last;
+      }
+    }
+
+    die "Couldn't get list of track hubs in the Registry when calling method give_all_Registered_track_hubs in script: ".__FILE__." line ".__LINE__."\n"
+    unless $flag_success ==1;
+  }
+
+  registry_logout($registry_server, $registry_user_name, $auth_token);
+
+  return \%track_hub_names;
+
+}
+
+
+sub get_Registry_hub_last_update {
+
+  my $name = shift;  # track hub name, ie study_id
+
+  my $auth_token = eval { registry_login($registry_server, $registry_user_name, $registry_pwd); };
+  if ($@) {
+    print "Couldn't login, skipping getting all registered trackhubs\n";
+    return;
+  }
+  my $ua = LWP::UserAgent->new;  
+  my $request = GET("$registry_server/api/trackhub/$name");
+  $request->headers->header(user       => $registry_user_name);
+  $request->headers->header(auth_token => $auth_token);
+  my $response = $ua->request($request);
+  my $hub;
+
+  if ($response->is_success) {
+    $hub = from_json($response->content);
+  } else {  
+
+    print "Couldn't get Registered track hubs with the first attempt when calling method get_Registry_hub_last_update in script ".__FILE__."\n";
+    my $flag_success=0;
+
+    for(my $i=1; $i<=10; $i++) {
+
+      print $i .".Retrying attempt: Retrying after 5s...\n";
+      sleep 5;
+      $response = $ua->request($request);
+      if($response->is_success){
+        $hub = from_json($response->content);
+        $flag_success =1 ;
+        last;
+      }
+    }
+
+    die "Couldn't get list of track hubs in the Registry when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n"
+    unless $flag_success==1;
+  }
+
+  die "Couldn't find hub $name in the Registry to get the last update date when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n" 
+  unless $hub;
+
+  my $last_update = -1;
+
+  foreach my $trackdb (@{$hub->{trackdbs}}) {
+
+    $request = GET($trackdb->{uri});
     $request->headers->header(user       => $registry_user_name);
     $request->headers->header(auth_token => $auth_token);
-    my $response = $ua->request($request);
-    my $hub;
-
+    $response = $ua->request($request);
+    my $doc;
     if ($response->is_success) {
-      $hub = from_json($response->content);
+      $doc = from_json($response->content);
     } else {  
-
-      print "Couldn't get Registered track hubs with the first attempt when calling method get_Registry_hub_last_update in script ".__FILE__."\n";
-      my $flag_success=0;
-
-      for(my $i=1; $i<=10; $i++) {
-
-        print $i .".Retrying attempt: Retrying after 5s...\n";
-        sleep 5;
-        $response = $ua->request($request);
-        if($response->is_success){
-          $hub = from_json($response->content);
-          $flag_success =1 ;
-          last;
-        }
-      }
-
-      die "Couldn't get list of track hubs in the Registry when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n"
-      unless $flag_success==1;
-    }
-
-    die "Couldn't find hub $name in the Registry to get the last update date when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n" 
-    unless $hub;
-
-    my $last_update = -1;
-
-    foreach my $trackdb (@{$hub->{trackdbs}}) {
-
-      $request = GET($trackdb->{uri});
-      $request->headers->header(user       => $registry_user_name);
-      $request->headers->header(auth_token => $auth_token);
-      $response = $ua->request($request);
-      my $doc;
-      if ($response->is_success) {
-        $doc = from_json($response->content);
-      } else {  
       die "Couldn't get trackdb at", $trackdb->{uri}." from study $name in the Registry when trying to get the last update date \n";
-      }
+    }
 
-      if (exists $doc->{updated}) {
-        $last_update = $doc->{updated}
-	if $last_update < $doc->{updated};
-      } else {
-        exists $doc->{created} or die "Trackdb does not have creation date in the Registry when trying to get the last update date of study $name\n";
-        $last_update = $doc->{created}
-	if $last_update < $doc->{created};
+    if (exists $doc->{updated}) {
+      $last_update = $doc->{updated}
+      if $last_update < $doc->{updated};
+    } else {
+      exists $doc->{created} or die "Trackdb does not have creation date in the Registry when trying to get the last update date of study $name\n";
+      $last_update = $doc->{created}
+      if $last_update < $doc->{created};
+    }
+  }
+
+  die "Couldn't get date as expected: $last_update\n" unless $last_update =~ /^[1-9]\d+?$/;
+
+  registry_logout($registry_server, $registry_user_name, $auth_token);
+
+  return $last_update;
+}
+
+sub give_all_runs_of_study_from_Registry {
+
+  my $name = shift;  # track hub name, ie study_id
+  
+
+  my $auth_token = eval { registry_login($registry_server, $registry_user_name, $registry_pwd); };
+  if ($@) {
+    print "Couldn't login, skipping getting all registered trackhubs\n";
+    return;
+  }
+ 
+  my $ua = LWP::UserAgent->new;
+  my $request = GET("$registry_server/api/trackhub/$name");
+  $request->headers->header(user       => $registry_user_name);
+  $request->headers->header(auth_token => $auth_token);
+  my $response = $ua->request($request);
+  my $hub;
+
+  if ($response->is_success) {
+
+    $hub = from_json($response->content);
+
+  } else {  
+
+    print "Couldn't get Registered track hub $name with the first attempt when calling method give_all_runs_of_study_from_Registry in script ".__FILE__." reason " .$response->code ." , ". $response->content."\n";
+    my $flag_success=0;
+
+    for(my $i=1; $i<=10; $i++) {
+
+      print $i .".Retrying attempt: Retrying after 5s...\n";
+      sleep 5;
+      $response = $ua->request($request);
+      if($response->is_success){
+        $hub = from_json($response->content);
+        $flag_success =1 ;
+        last;
       }
     }
 
-    die "Couldn't get date as expected: $last_update\n" unless $last_update =~ /^[1-9]\d+?$/;
-
-    return $last_update;
+    die "Couldn't get the track hub $name in the Registry when calling method give_all_runs_of_study_from_Registry in script: ".__FILE__." line ".__LINE__."\n"
+    unless $flag_success==1;
   }
 
-  sub give_all_runs_of_study_from_Registry {
+  die "Couldn't find hub $name in the Registry to get its runs when calling method give_all_runs_of_study_from_Registry in script: ".__FILE__." line ".__LINE__."\n" 
+  unless $hub;
 
-    my $name = shift;  # track hub name, ie study_id
-  
-    my $request = GET("$registry_server/api/trackhub/$name");
-    $request->headers->header(user       => $registry_username);
+  my %runs ;
+
+  foreach my $trackdb (@{$hub->{trackdbs}}) {
+
+    $request = GET($trackdb->{uri});
+    $request->headers->header(user       => $registry_user_name);
     $request->headers->header(auth_token => $auth_token);
-    my $response = $ua->request($request);
-    my $hub;
+
+    # my $request = registry_get_request();
+    $response = $ua->request($request);
+    my $doc;
 
     if ($response->is_success) {
 
-      $hub = from_json($response->content);
-
+      $doc = from_json($response->content);
+      map { $runs{$_}++ } keys %{$doc->{configuration}};
     } else {  
-
-      print "Couldn't get Registered track hubs with the first attempt when calling method give_all_runs_of_study in script ".__FILE__."\n";
-      my $flag_success=0;
-
-      for(my $i=1; $i<=10; $i++) {
-
-        print $i .".Retrying attempt: Retrying after 5s...\n";
-        sleep 5;
-        $response = $ua->request($request);
-        if($response->is_success){
-          $hub = from_json($response->content);
-          $flag_success =1 ;
-          last;
-        }
-      }
-
-      die "Couldn't get list of track hubs in the Registry when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n"
-      unless $flag_success==1;
+      die "Couldn't get trackdb at", $trackdb->{track}." from study $name in the Registry when trying to get all its runs \n";
     }
-
-    die "Couldn't find hub $name in the Registry to get the last update date when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n" 
-    unless $hub;
-
-    my %runs ;
-
-    foreach my $trackdb (@{$hub->{trackdbs}}) {
-
-      $request = GET($trackdb->{uri});
-      $request->headers->header(user       => $registry_username);
-      $request->headers->header(auth_token => $auth_token);
-      $response = $ua->request($request);
-      my $doc;
-
-      if ($response->is_success) {
-
-        $doc = from_json($response->content);
-
-        if (exists $doc->{configuration}) {
-
-          my %hash = %{$doc->{configuration}};
-
-          foreach my $run_id (keys %hash){
-
-            $runs{$run_id}=1;
-          }
-        }else{
-         die "I couldn't get the tracks of hub $name from Registry\n";
-        }
-      } else {  
-        die "Couldn't get trackdb at", $trackdb->{track}." from study $name in the Registry when trying to get the last update date \n";
-      }
-    }
-
-    return \%runs;
-
   }
 
+  registry_logout($registry_server, $registry_user_name, $auth_token);
 
-  sub give_number_of_dirs_in_ftp {
+  return \%runs;
 
-    my $ftp_location = $ftp_local_path;
+}
 
-    my @files = `ls $ftp_local_path`;
+sub registry_get_request {
+  my ($server, $endpoint, $user, $token) = @_;
 
-    return  scalar @files;
+  my $request = GET("$server$endpoint");
+  $request->headers->header(user       => $user);
+  $request->headers->header(auth_token => $token);
+  
+  return $request;
+}
 
-  }
+sub give_number_of_dirs_in_ftp {
+
+  my $ftp_location = $ftp_local_path;
+
+  my @files = `ls $ftp_local_path`;
+
+  return  scalar @files;
+}
 
 
-  sub getRightAssemblyName { # this method returns the right assembly name in the cases where Robert takes the assembly accession instead of the assembly name due to our bug
+sub getRightAssemblyName { # this method returns the right assembly name in the cases where Robert takes the assembly accession instead of the assembly name due to our bug
 
-    my $assembly_string = shift;
-    my $assembly_name;
+  my $assembly_string = shift;
+  my $assembly_name;
 
 
-    if (!$assName_assAccession{$assembly_string}){
+  if (!$assName_assAccession{$assembly_string}){
 
-      if(!$assAccession_assName{$assembly_string}) {  
+    if(!$assAccession_assName{$assembly_string}) {  
       # solanum_tuberosum has a wrong assembly.default it's neither the assembly.name nor the assembly.accession BUT : "assembly_name":"SolTub_3.0" and "assembly_id":"GCA_000226075.1"
 
       $assembly_name = $assembly_string;
  
-      }else{
-        $assembly_name = $assAccession_assName{$assembly_string};
-      }
     }else{
-      $assembly_name = $assembly_string;
+      $assembly_name = $assAccession_assName{$assembly_string};
     }
-
-    if($assembly_string eq "3.0"){ # this is an exception for solanum_tuberosum
-
-      $assembly_name = "SolTub_3.0";
-    }
-    return $assembly_name;
-
+  }else{
+    $assembly_name = $assembly_string;
   }
 
+  if($assembly_string eq "3.0"){ # this is an exception for solanum_tuberosum
 
-  sub get_date_latest_date_of_registration_in_registry {
-
-    my $study_id = shift;
-    
-
+    $assembly_name = "SolTub_3.0";
   }
+  return $assembly_name;
+
+}
+
+sub hash_keys_are_equal{
+   
+  my (%hash1, %hash2) = @_;
+  my $areEqual=1;
+
+  if(keys %hash1 == keys %hash2) {
+    foreach my $key1(keys %hash1) {
+      if(!exists $hash2{$key1}) {
+        $areEqual=0;
+        last;
+      }
+    }
+  }
+
+  return $areEqual;
+}
+
+  

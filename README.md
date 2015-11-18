@@ -13,7 +13,7 @@ Parameters:
 -password   (of the track Hub Registry account)
 -local_ftp_dir_path 
 -http_url
-optional flag -do_track_hubs_from_scratch
+-do_track_hubs_from_scratch (optional flag) 
 
 Example run:
 

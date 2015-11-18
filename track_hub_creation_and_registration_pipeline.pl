@@ -143,19 +143,6 @@ my %robert_plant_study;
 my %studyId_lastProcessedDates;
 my %study_Id_runId;
 
-# 
-# my $all_track_hubs_in_registry_after_update = give_all_Registered_track_hubs();
-# 
-# 
-# foreach my $hub_name (keys %{$all_track_hubs_in_registry_after_update}){
-# 
-#     my $runs = give_all_runs_of_study_from_Registry($hub_name);
-#     foreach my $run (keys %{$runs}){
-#       print $hub_name."\t".$run."\n";
-#     }
-# }
-
-
 # a line of this call:  http://plantain:3000/eg/getLibrariesByOrganism/oryza_sativa
 #[{"STUDY_ID":"DRP000315","SAMPLE_ID":"SAMD00009891","RUN_ID":"DRR000756","ORGANISM":"oryza_sativa_japonica_group","STATUS":"Complete","ASSEMBLY_USED":"IRGSP-1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 17:39:45",
 #"LAST_PROCESSED_DATE":"Sat Sep 05 2015 22:40:36","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000756/DRR000756.cram"},
@@ -184,8 +171,6 @@ foreach my $ens_plant (keys %ens_plant_names) { # i loop through the ensembl pla
         
   }
 }
-
-
 
 my %studyId_date;
  
@@ -277,15 +262,10 @@ if($from_scratch) {
  
   }
 
-    #my $common_studies_counter=0;
-
   foreach my $common_study (keys %common_studies){  # from the common studies, I want to see which ones were updated from Robert , after I last ran the pipeline. I will update only those ones.
  
     my $roberts_last_processed_unix_time = $studyId_date {$common_study};
 
-    #$common_studies_counter++;
-
-    #print $common_studies_counter.".$common_study\n";
     my $study_created_date_unix_time = eval { get_Registry_hub_last_update($common_study); };
 
     if ($@) { # if the get_Registry_hub_last_update method fails to return the date of the track hub , then i re-do it anyways to be on the safe side

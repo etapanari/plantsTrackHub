@@ -143,6 +143,19 @@ my %robert_plant_study;
 my %studyId_lastProcessedDates;
 my %study_Id_runId;
 
+# 
+# my $all_track_hubs_in_registry_after_update = give_all_Registered_track_hubs();
+# 
+# 
+# foreach my $hub_name (keys %{$all_track_hubs_in_registry_after_update}){
+# 
+#     my $runs = give_all_runs_of_study_from_Registry($hub_name);
+#     foreach my $run (keys %{$runs}){
+#       print $hub_name."\t".$run."\n";
+#     }
+# }
+
+
 # a line of this call:  http://plantain:3000/eg/getLibrariesByOrganism/oryza_sativa
 #[{"STUDY_ID":"DRP000315","SAMPLE_ID":"SAMD00009891","RUN_ID":"DRR000756","ORGANISM":"oryza_sativa_japonica_group","STATUS":"Complete","ASSEMBLY_USED":"IRGSP-1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 17:39:45",
 #"LAST_PROCESSED_DATE":"Sat Sep 05 2015 22:40:36","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000756/DRR000756.cram"},
@@ -171,6 +184,8 @@ foreach my $ens_plant (keys %ens_plant_names) { # i loop through the ensembl pla
         
   }
 }
+
+
 
 my %studyId_date;
  
@@ -285,12 +300,12 @@ if($from_scratch) {
       # I want to check also if the runs of the common study are the same in the Registry and in Array Express:
 
       my %runs_in_Registry = %{give_all_runs_of_study_from_Registry($common_study)};
-      my %runs_in_Array_Express = %{$study_Id_runId {$common_study}} ;
+      my %runs_in_Array_Express = %{$study_Id_runId {$common_study}} ;  #    $study_Id_runId { $hash{"STUDY_ID"} } { $hash{"RUN_ID"} } = 1;
       my @runs_numbers_holder;
       $runs_numbers_holder[1]= scalar (keys %runs_in_Registry);
       $runs_numbers_holder[2]= scalar (keys %runs_in_Array_Express);
 
-      my $are_runs_the_same = hash_keys_are_equal(%runs_in_Registry,%runs_in_Array_Express); # returns 0 id they are not equal, 1 if they are
+      my $are_runs_the_same = hash_keys_are_equal(\%runs_in_Registry,\%runs_in_Array_Express); # returns 0 id they are not equal, 1 if they are
         
       if( $study_created_date_unix_time < $roberts_last_processed_unix_time or $are_runs_the_same ==0) { # if the study has now different runs it needs to be updated
 
@@ -298,7 +313,7 @@ if($from_scratch) {
           $runs_numbers_holder[0] = "diff_time_only";
           $common_updated_studies {$common_study}=\@runs_numbers_holder;
         }
-        if ( $study_created_date_unix_time == $roberts_last_processed_unix_time and $are_runs_the_same ==0) { # different number of runs
+        if ( $study_created_date_unix_time >= $roberts_last_processed_unix_time and $are_runs_the_same ==0) { # different number of runs
           $runs_numbers_holder[0] = "diff_number_runs_only";
           $common_updated_studies {$common_study}=\@runs_numbers_holder;
         }
@@ -312,222 +327,219 @@ if($from_scratch) {
     } 
   }
    
-} # end of the incremental update  # identation until here
+} # end of the incremental update  
 
-  my %studies_to_be_re_made = (%common_updated_studies , %new_studies);
+my %studies_to_be_re_made = (%common_updated_studies , %new_studies);
 
-  if(scalar keys %studies_to_be_re_made !=0){
+if(scalar keys %studies_to_be_re_made !=0){
 
 
-    print "\n ******** starting to make directories and files for the track hubs in the ftp server that are new/updated: $http_url\n\n";
-    $line_counter = 0;
+  print "\n ******** starting to make directories and files for the track hubs in the ftp server that are new/updated: $http_url\n\n";
+  $line_counter = 0;
 
-    foreach my $study_id (keys %studies_to_be_re_made){ 
+  foreach my $study_id (keys %studies_to_be_re_made){ 
 
-      $line_counter ++;
-      print "$line_counter.\tcreating track hub for study $study_id";
-      if ($new_studies{$study_id}){
-        print " (new study)";
-      }
-      if (ref($studies_to_be_re_made{$study_id}) eq 'ARRAY' ){
+    $line_counter ++;
+    print "$line_counter.\tcreating track hub for study $study_id";
+    if ($new_studies{$study_id}){
+      print " (new study)";
+    }
+    if (ref($studies_to_be_re_made{$study_id}) eq 'ARRAY' ){
       
-        my @table_content = @{$studies_to_be_re_made{$study_id}};
+      my @table_content = @{$studies_to_be_re_made{$study_id}};
 
-        if($table_content[0] eq "registry_no_response"){
+      if($table_content[0] eq "registry_no_response"){
 
-          print " (Registry unable to give last update date - had to re-do trackhub)";
+        print " (Registry unable to give last update date - had to re-do trackhub)";
 
-        }elsif($table_content[0] eq "diff_number_runs_only") {
+      }elsif($table_content[0] eq "diff_number_runs_only") {
 
-          print " (Different number of runs: Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")";
+        print " (Different number of runs: Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")";
 
-        }elsif($table_content[0] eq "diff_time_only") {
+      }elsif($table_content[0] eq "diff_time_only") {
 
-          my $date_registry_last = localtime(get_Registry_hub_last_update($study_id))->strftime('%F %T');
-          my $date_cram_created = localtime($studyId_date{$study_id})->strftime('%F %T');
+        my $date_registry_last = localtime(get_Registry_hub_last_update($study_id))->strftime('%F %T');
+        my $date_cram_created = localtime($studyId_date{$study_id})->strftime('%F %T');
 
-          print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created .")";
+        print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created .")";
 
-        }elsif($table_content[0] eq "diff_number_runs_diff_time"){
+      }elsif($table_content[0] eq "diff_number_runs_diff_time"){
 
-          my $date_registry_last = localtime(get_Registry_hub_last_update($study_id))->strftime('%F %T');
-          my $date_cram_created = localtime($studyId_date{$study_id})->strftime('%F %T');
+        my $date_registry_last = localtime(get_Registry_hub_last_update($study_id))->strftime('%F %T');
+        my $date_cram_created = localtime($studyId_date{$study_id})->strftime('%F %T');
 
-          print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created . " and also different number of runs: "." Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")"; ;
-        }
+        print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created . " and also different number of runs: "." Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")"; ;
       }
-      print "\t";
+    }
+    print "\t";
 
-      my $ls_output = `ls $ftp_local_path`  ;
+    my $ls_output = `ls $ftp_local_path`  ;
 
-      if($? !=0){ # if ls is successful, it returns 0
+    if($? !=0){ # if ls is successful, it returns 0
  
-        die "I cannot ls $ftp_local_path in script: ".__FILE__." line: ".__LINE__."\n";
+      die "I cannot ls $ftp_local_path in script: ".__FILE__." line: ".__LINE__."\n";
+
+    }
+
+    if($ls_output=~/$study_id/){ # if it's not a new study it will be in the ftp server, so I have to check
+
+      `rm -r $ftp_local_path/$study_id`; # i first remove it from the server to re-do it
+
+      if($? !=0){ # if touch is successful, it returns 0
+ 
+        die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
 
       }
+    }                
 
-      if($ls_output=~/$study_id/){ # if it's not a new study it will be in the ftp server, so I have to check
-
-        `rm -r $ftp_local_path/$study_id`; # i first remove it from the server to re-do it
-
-        if($? !=0){ # if touch is successful, it returns 0
- 
-          die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
-
-        }
-      }                
-
-      my $output_script = `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
-      print $output_script;
-    }
-    if($from_scratch){
-      my $date_string2 = localtime();
-      print " \n Finished creating the files,directories of the track hubs on the server on:\n";
-      print "Local date,time: $date_string2\n";
-    }
-    print "\n***********************************\n\n";
-  }else{
-    if(!$from_scratch){
-      print "\nThere are no updated or new tracks to be made from the last time the pipeline was run.\n";
-    }
-  } 
-
-  my $line_counter2 = 0;
-
-  my %studies_to_register;
-
+    my $output_script = `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+    print $output_script;
+  }
+  if($from_scratch){
+    my $date_string2 = localtime();
+    print " \n Finished creating the files,directories of the track hubs on the server on:\n";
+    print "Local date,time: $date_string2\n";
+  }
+  print "\n***********************************\n\n";
+}else{
   if(!$from_scratch){
- 
-    %studies_to_register= %studies_to_be_re_made ;
-
-  }else{
-
-    %studies_to_register = %studyId_assemblyName ;
+    print "\nThere are no updated or new tracks to be made from the last time the pipeline was run.\n";
   }
+} 
 
-  foreach my $study_id (keys %studies_to_register){ 
+my $line_counter2 = 0;
 
-    my $hub_txt_url = $http_url . "/" . $study_id . "/hub.txt" ;
+my %studies_to_register;
+
+if(!$from_scratch){
+ 
+  %studies_to_register= %studies_to_be_re_made ;
+
+}else{
+
+  %studies_to_register = %studyId_assemblyName ;
+}
+
+foreach my $study_id (keys %studies_to_register){ 
+
+  my $hub_txt_url = $http_url . "/" . $study_id . "/hub.txt" ;
            
-    my @assembly_names_with_accessions;
+  my @assembly_names_with_accessions;
       
-    foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data , get runs by organism REST call                           
+  foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data , get runs by organism REST call                           
          
-      $assembly_name = getRightAssemblyName($assembly_name); # as Robert gets the assembly.default that due to our bug could be the assembly.accession rather than the assembly.name
+    $assembly_name = getRightAssemblyName($assembly_name); # as Robert gets the assembly.default that due to our bug could be the assembly.accession rather than the assembly.name
 
-      if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
+    if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
 
-        print STDERR "ERROR: study $study_id will not be Registered as there is no assembly name \'$assembly_name\' (Robert's call) of study $study_id in my hash from ensemblgenomes REST call: $ens_genomes_plants_rest_call \n\n";
-        next;  # this is for potato (solanum_tuberosum that has an invalid assembly.default name)
-      }
-      push ( @assembly_names_with_accessions, $assembly_name) ; # this array has only the assembly names that have assembly accessions
-
+      print STDERR "ERROR: study $study_id will not be Registered as there is no assembly name \'$assembly_name\' (Robert's call) of study $study_id in my hash from ensemblgenomes REST call: $ens_genomes_plants_rest_call \n\n";
+      next;  # this is for potato (solanum_tuberosum that has an invalid assembly.default name)
     }
+    push ( @assembly_names_with_accessions, $assembly_name) ; # this array has only the assembly names that have assembly accessions
 
-    my @array_string_pairs;
+  }
 
-    foreach my $assembly_name ( @assembly_names_with_accessions ){
+  my @array_string_pairs;
 
-      my $string =  $assembly_name.",".$assName_assAccession{$assembly_name} ;
-      push (@array_string_pairs , $string);
+  foreach my $assembly_name ( @assembly_names_with_accessions ){
 
-    }
+    my $string =  $assembly_name.",".$assName_assAccession{$assembly_name} ;
+    push (@array_string_pairs , $string);
 
-    my $assemblyNames_assemblyAccesions_string;
+  }
 
-    if (scalar @array_string_pairs >=1 ){
+  my $assemblyNames_assemblyAccesions_string;
 
-      $assemblyNames_assemblyAccesions_string=$array_string_pairs[0];
+  if (scalar @array_string_pairs >=1 ){
 
-    } else{
+    $assemblyNames_assemblyAccesions_string=$array_string_pairs[0];
+
+  } else{
           
-      $assemblyNames_assemblyAccesions_string="empty";
-    }
+    $assemblyNames_assemblyAccesions_string="empty";
+  }
 
-    if (scalar @array_string_pairs > 1){
+  if (scalar @array_string_pairs > 1){
 
-      $assemblyNames_assemblyAccesions_string=$array_string_pairs[0].",";
+    $assemblyNames_assemblyAccesions_string=$array_string_pairs[0].",";
 
-      for(my $index=1; $index< scalar @array_string_pairs; $index++){
+    for(my $index=1; $index< scalar @array_string_pairs; $index++){
 
-        $assemblyNames_assemblyAccesions_string=$assemblyNames_assemblyAccesions_string.$array_string_pairs[$index];
+      $assemblyNames_assemblyAccesions_string=$assemblyNames_assemblyAccesions_string.$array_string_pairs[$index];
 
-        if ($index < scalar @array_string_pairs -1){
+      if ($index < scalar @array_string_pairs -1){
 
-          $assemblyNames_assemblyAccesions_string = $assemblyNames_assemblyAccesions_string .",";
-        }
-               
+        $assemblyNames_assemblyAccesions_string = $assemblyNames_assemblyAccesions_string .",";
       }
+               
     }
+  }
  
-    my $output = `perl register_track_hub.pl -username $registry_user_name -password $registry_pwd -hub_txt_file_location $hub_txt_url -assembly_name_accession_pairs $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
-    if($output =~ /is Registered/){
+  my $output = `perl register_track_hub.pl -username $registry_user_name -password $registry_pwd -hub_txt_file_location $hub_txt_url -assembly_name_accession_pairs $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
+  if($output =~ /is Registered/){
 
-      $line_counter2 ++;
-      print $line_counter2.". ";
-    }
+    $line_counter2 ++;
+    print $line_counter2.". ";
+  }
 
-    print $output;
+  print $output;
 
-  } #************************************************************************************
+} #************************************************************************************
 
-  my $dt = DateTime->today;
+my $dt = DateTime->today;
 
-  my $date_wrong_order = $dt->date;  # it is in format 2015-10-01
-  # i want 01-10-2015
+my $date_wrong_order = $dt->date;  # it is in format 2015-10-01
+# i want 01-10-2015
 
-  my @words = split(/-/, $date_wrong_order);
-  my $current_date = $words[2] . "-". $words[1]. "-". $words[0];  # ie 01-10-2015 (1st October)
+my @words = split(/-/, $date_wrong_order);
+my $current_date = $words[2] . "-". $words[1]. "-". $words[0];  # ie 01-10-2015 (1st October)
    
-  print "\n####################################################################################\n";
-  print "\nArray Express REST calls give the following stats:\n";
-  print "\nThere are " . scalar (keys %runs) ." plant runs completed to date ( $current_date )\n";
-  print "\nThere are " . scalar (keys %current_studies) ." plant studies completed to date ( $current_date )\n";
+print "\n####################################################################################\n";
+print "\nArray Express REST calls give the following stats:\n";
+print "\nThere are " . scalar (keys %runs) ." plant runs completed to date ( $current_date )\n";
+print "\nThere are " . scalar (keys %current_studies) ." plant studies completed to date ( $current_date )\n";
 
-  print "\n****** Plants done to date: ******\n\n";
+print "\n****** Plants done to date: ******\n\n";
 
-  my $counter_ens_plants = 0 ; 
-  my $index = 0;
+my $counter_ens_plants = 0 ; 
+my $index = 0;
 
-  foreach my $plant (keys %robert_plants_done){
+foreach my $plant (keys %robert_plants_done){
 
-    if($ens_plant_names {$plant}){
-      $counter_ens_plants++;
-      print " * " ;
-    }
-    $index++;
-    print $index.". ".$plant." =>\t". $robert_plants_done{$plant}." runs / ". scalar ( keys ( %{$robert_plant_study{$plant}} ) )." studies\n";
-
+  if($ens_plant_names {$plant}){
+    $counter_ens_plants++;
+    print " * " ;
   }
-  print "\n";
+  $index++;
+  print $index.". ".$plant." =>\t". $robert_plants_done{$plant}." runs / ". scalar ( keys ( %{$robert_plant_study{$plant}} ) )." studies\n";
+
+}
+print "\n";
 
 
-  print "In total there are " .$counter_ens_plants . " Ensembl plants done to date.\n\n";
-  print "####################################################################################\n\n";
+print "In total there are " .$counter_ens_plants . " Ensembl plants done to date.\n\n";
+print "####################################################################################\n\n";
 
-  my $date_string_end = localtime();
-  print " Finished running the pipeline on:\n";
-  print "Local date,time: $date_string_end\n";
+my $date_string_end = localtime();
+print " Finished running the pipeline on:\n";
+print "Local date,time: $date_string_end\n";
 
 
-  my $total_disc_space_of_track_hubs = `du -sh $ftp_local_path`;
+my $total_disc_space_of_track_hubs = `du -sh $ftp_local_path`;
   
-  print "\nTotal disc space occupied in $ftp_local_path is:\n $total_disc_space_of_track_hubs\n";
+print "\nTotal disc space occupied in $ftp_local_path is:\n $total_disc_space_of_track_hubs\n";
 
-  print "There are in total ". give_number_of_dirs_in_ftp(). " files in the ftp server\n\n";
+print "There are in total ". give_number_of_dirs_in_ftp(). " files in the ftp server\n\n";
 
-  my %track_hubs =%{give_all_Registered_track_hubs()};
-  my $total_number_of_runs=0;
-  my $counter_total_registered_track_hubs= scalar keys %track_hubs;
+my $all_track_hubs_in_registry_after_update = give_all_Registered_track_hubs();
+my %distinct_runs;
 
-  foreach my $hub_name (keys %track_hubs){
+foreach my $hub_name (keys %{$all_track_hubs_in_registry_after_update}){
+  
+  map { $distinct_runs{$_}++ } keys %{give_all_runs_of_study_from_Registry($hub_name)};
+}
 
-    my %runs = %{give_all_runs_of_study_from_Registry($hub_name)};
-    $total_number_of_runs+=scalar (keys %runs);
-
-  }
-
-  print "There in total ". $counter_total_registered_track_hubs. " track hubs with total $total_number_of_runs runs registered in the Track Hub Registry\n\n\n";
+print "There in total ". scalar (keys %{$all_track_hubs_in_registry_after_update}). " track hubs with total ".scalar (keys %distinct_runs)." runs registered in the Track Hub Registry\n\n\n";
 
 
 
@@ -608,7 +620,7 @@ sub give_all_Registered_track_hubs{
 
   my $auth_token = eval { registry_login($registry_server, $registry_user_name, $registry_pwd); };
   if ($@) {
-    print "Couldn't login, skipping getting all registered trackhubs\n";
+    print "Couldn't login, skipping getting all registered trackhubs: $@\n";
     return;
   }
 
@@ -647,7 +659,7 @@ sub give_all_Registered_track_hubs{
     unless $flag_success ==1;
   }
 
-  registry_logout($registry_server, $registry_user_name, $auth_token);
+  #registry_logout($registry_server, $registry_user_name, $auth_token);
 
   return \%track_hub_names;
 
@@ -723,7 +735,7 @@ sub get_Registry_hub_last_update {
 
   die "Couldn't get date as expected: $last_update\n" unless $last_update =~ /^[1-9]\d+?$/;
 
-  registry_logout($registry_server, $registry_user_name, $auth_token);
+  #registry_logout($registry_server, $registry_user_name, $auth_token);
 
   return $last_update;
 }
@@ -791,11 +803,11 @@ sub give_all_runs_of_study_from_Registry {
       $doc = from_json($response->content);
       map { $runs{$_}++ } keys %{$doc->{configuration}};
     } else {  
-      die "Couldn't get trackdb at", $trackdb->{track}." from study $name in the Registry when trying to get all its runs \n";
+      die "Couldn't get trackdb at ", $trackdb->{uri} , " from study $name in the Registry when trying to get all its runs, reason: " .$response->code ." , ". $response->content."\n";
     }
   }
 
-  registry_logout($registry_server, $registry_user_name, $auth_token);
+  #registry_logout($registry_server, $registry_user_name, $auth_token);
 
   return \%runs;
 
@@ -851,16 +863,19 @@ sub getRightAssemblyName { # this method returns the right assembly name in the 
 
 sub hash_keys_are_equal{
    
-  my (%hash1, %hash2) = @_;
+  my ($hash1, $hash2) = @_;
   my $areEqual=1;
 
-  if(keys %hash1 == keys %hash2) {
-    foreach my $key1(keys %hash1) {
-      if(!exists $hash2{$key1}) {
+  if(scalar(keys %{$hash1}) == scalar (keys %{$hash2})){
+
+    foreach my $key1(keys %{$hash1}) {
+      if(!$hash2->{$key1}) {
+
         $areEqual=0;
-        last;
       }
     }
+  }else{
+    $areEqual = 0;
   }
 
   return $areEqual;

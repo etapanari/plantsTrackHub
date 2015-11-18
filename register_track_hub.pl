@@ -16,7 +16,6 @@ use Getopt::Long;
 my $ua = LWP::UserAgent->new;
 
 # example call:
-#perl register_track_hub.pl -username tapanari -password testing -hub_txt_file_location http://www.ebi.ac.uk/~tapanari/data/test2/SRP036860/hub.txt -assembly_name_accession_pairs JGI2.0,GCA_000002775.2
 #  perl register_track_hub.pl -username tapanari -password testing -hub_txt_file_location ftp://ftp.ensemblgenomes.org/pub/misc_data/TrackHubs/SRP050323/hub.txt -assembly_name_accession_pairs IWGSC1.0+popseq,0000
 
 my $username ;

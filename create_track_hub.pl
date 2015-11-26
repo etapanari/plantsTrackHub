@@ -14,6 +14,7 @@ use utf8;
 use Bio::EnsEMBL::ENA::SRA::BaseSraAdaptor qw(get_adaptor);
 use POSIX qw(strftime); # to get GMT time stamp
 
+
 my $study_id ;
 my $ftp_dir_full_path ;   #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
 my $url_root ;  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
@@ -29,6 +30,44 @@ my $server_array_express =  "http://plantain:3000/eg"; # Robert's server where h
 
 my $http = HTTP::Tiny->new();
 
+my %months = (
+        "jan" => "01",
+        "feb" => "02",
+        "mar" => "03",
+        "apr" => "04",
+        "may" => "05",
+        "jun" => "06",
+        "jul" => "07",
+        "aug" => "08",
+        "sep" => "09",
+        "oct" => "10",
+        "nov" => "11",
+        "dec" => "12",
+        "Jan" => "01",
+        "Feb" => "02",
+        "Mar" => "03",
+        "Apr" => "04",
+        "May" => "05",
+        "Jun" => "06",
+        "Jul" => "07",
+        "Aug" => "08",
+        "Sep" => "09",
+        "Oct" => "10",
+        "Nov" => "11",
+        "Dec" => "12",
+        "January" => "01",
+        "February" => "02",
+        "March" => "03",
+        "April" => "04",
+        "June" => "06",
+        "July" => "07",
+        "Aug" => "08",
+        "September" => "09",
+        "October" => "10",
+        "November" => "11",
+        "December" => "12"
+);
+
 
 my %robert_plant_names = %{getPlantNamesArrayExpressAPI()}; 
 
@@ -40,6 +79,7 @@ my %assembly_names; #  it stores all distinct assembly names for a given study
 my %run_id_location; # it stores as key the run id and value the location in the ftp server of arrayexpress
 my %run_assembly; #  it stores as key the run id and value the assembly name 
 my %run_robert_species_name;
+my %sample_robert_species_name;
 
 # a line of this call:  http://plantain:3000/eg/getLibrariesByStudyId/SRP033494
 #[{"STUDY_ID":"SRP033494","SAMPLE_ID":"SAMN02434874","RUN_ID":"SRR1042754","ORGANISM":"arabidopsis_thaliana","STATUS":"Complete","ASSEMBLY_USED":"TAIR10","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:11:03",
@@ -52,9 +92,10 @@ foreach my $hash_ref (@runs_response){
   if($hash{"STATUS"} eq "Complete" and $robert_plant_names{$hash {"ORGANISM"}}) { # i want to use only the "complete" runs and *plants* only, a study could have 2 species ie a plant and a non-plant
 
     $assembly_names{$hash{"ASSEMBLY_USED"}} = 1; # I store the assembly name ie the "TAIR10"
-    $run_id_location{$hash{"RUN_ID"}}= $hash{"FTP_LOCATION"}; 
+    $run_id_location{$hash{"RUN_ID"}}= $hash{"FTP_LOCATION"};   # HERE I WOULD HAVE TO CALL MY METHOD TO GET THE FTP LOCATION FROM ENA
     $run_assembly { $hash{"RUN_ID"} } = $hash{"ASSEMBLY_USED"};
     $run_robert_species_name {$hash{"RUN_ID"}} = $hash {"ORGANISM"};
+    $sample_robert_species_name {$hash{"SAMPLE_ID"}} = $hash {"ORGANISM"};
   }
 }
 
@@ -137,8 +178,6 @@ foreach my $assembly_name (keys %assembly_names){ # For every assembly I make a 
     }
 }
 
-
-
 #hub.txt content:
 
 #hub SRP036643
@@ -163,7 +202,11 @@ if($? !=0){ # if touch is successful, it returns 0
 
 my $study_adaptor = get_adaptor('Study'); # I am using Dan Stain's ENA API
 
-my @studies =@{$study_adaptor->get_by_accession($study_id)}; # i am expecting to return 1 study object
+my @studies = eval {@{$study_adaptor->get_by_accession($study_id)} }; # i am expecting to return 1 study object
+
+if ($@) {
+  print "..ERROR - this will be deleted\n" and die "ENA doesn't still have the submission of study $study_id , hence I cannot yet create a track hub for this study \n";
+}
 
 if (scalar @studies >1){
  
@@ -183,9 +226,8 @@ utf8::encode($long_label) ; # i do this as from ENA there are some funny data li
 print $fh $long_label;
 print $fh "genomesFile genomes.txt\n";
 print $fh "email tapanari\@ebi.ac.uk\n";
-     
 
-      
+
 #genomes.txt content 
 
 # genome IWGSC1.0+popseq
@@ -249,7 +291,10 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
 
   my @samples=@{ $study->samples()};  # usually 1 study has more than 1 samples
 
-  for my $sample ( @{ $study->samples() } ) { # I print the sample attributes here
+  foreach my $sample ( @{ $study->samples() } ) { # I print the sample attributes here
+
+    #print $fh $sample->biosample"\n";
+    #next unless $sample_robert_species_name{$sample->accession}; # next unless robert has done this sample
 
     my @attrib_array_sample; 
 
@@ -263,23 +308,62 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
       @attrib_array_sample= @{$sample->{"attributes"}}; # i get this: Not an ARRAY reference at create_track_hub.pl
     }
 
+## for the sample supertrack
+
+    my @runs = @{$sample->runs()};
+    my $flag = 0;
+    foreach my $run (@runs){
+      if($run_id_location{$run->accession}){
+        $flag = 1;
+      }   
+    }
+    next unless $flag==1;
+
+    print $fh "track ".$sample->accession."\n";
+    print $fh "superTrack on show\n";
+    print $fh "shortLabel ENA_sample:".$sample->accession."\n";
+    my $longLabel_sample ;
+    if($sample->title()){  # there are cases where the sample doesnt have title ie : SRP023101 and SRP026160 don't have sample title
+       $longLabel_sample = "longLabel ".$sample->title()."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample->accession."\">".$sample->accession."</a>";
+    }else{
+       $longLabel_sample = "longLabel "."ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample->accession."\">".$sample->accession."</a>";
+    }
+    utf8::encode($longLabel_sample);  
+    print $fh $longLabel_sample."\n" ;
+    my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;
+
+    print $fh "metadata hub_created_date=".printlabel($date_string)." ";
+    foreach my $attr_sample (@attrib_array_sample){
+ 
+      my $value = $attr_sample->{"VALUE"};
+      my $key = $attr_sample->{"TAG"};
+      utf8::encode($value) ;
+      next if($key =~/ENA-\w+-COUNT/) ;
+      utf8::encode($key) ;
+      if($key =~/date/ and $value =~/[(a-z)|(A-Z)]/){ # if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
+        $value = change_date($value);
+      }
+      print $fh printlabel_key($key)."=".printlabel($value)." ";
+                     
+    }
+    print $fh "\n\n";
+## end of the sample super track
     my @experiments =@{$sample->experiments()};
 
     foreach my $experiment (@experiments){  # each sample can have 1,2 or more experiments ; most have 1 or 2 but some can have more than 100
 
-      my @attrib_array_experiment= @{$experiment->{"attributes"}};
       my @runs= @{$experiment->runs()}; # each experiment can have 1, 2 or more runs ; usually there are 1 or 2 runs per experiment
 
       foreach my $run (@runs){
 
-        if($done_runs {$run->accession()}{$assembly_name}){  # i do this check because i want to print every run once in the trackDb.txt file. see line 185
+        if($done_runs {$run->accession()}{$assembly_name}){  # i do this check because i want to print every run once in the trackDb.txt file. see line 224 for comments
           next;
         }else{
 
           $done_runs {$run->accession()}{$assembly_name} =1;
         }
 
-        next unless ($run_id_location{$run->accession()}); # if Robert's API call did not return this run id then I won't use it
+        next unless ($run_id_location{$run->accession()}); # if Robert's API call did not return this run id then I won't use it ; it's not aligned yet
         my $roberts_api_asssembly_name =  $run_assembly{$run->accession} ;
         my $proper_name_current_run = getRightAssemblyName ($roberts_api_asssembly_name);
         next unless ($proper_name_current_run eq $assembly_name ); 
@@ -287,52 +371,22 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
         my $ftp_location = $run_id_location{$run->accession};
         my $species_name = $run_robert_species_name {$run->accession};
 
-        print $fh "track ". $run->accession()."\n"; 
-        print $fh "bigDataUrl $ftp_location \n"; 
-        my $short_label_ENA="shortLabel ENA:".$run->accession()."\n";
+        print $fh "	track ". $run->accession()."\n"; 
+        print $fh "	parent ". $sample->accession()."\n"; 
+        print $fh "	bigDataUrl $ftp_location \n"; 
+        my $short_label_ENA="	shortLabel ENA_run:".$run->accession()."\n";
         print $fh $short_label_ENA;
 
-        my $long_label_ENA = "longLabel ".$run->title()."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
+        my $long_label_ENA = "	longLabel ".$run->title()."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run->accession."\">".$run->accession."</a>"."\n" ;
         utf8::encode($long_label_ENA) ;
         print $fh $long_label_ENA;
 
-        print $fh "type bam\n";
-        print $fh "metadata species=$species_name ";
+        print $fh "	type bam\n";
+        print $fh "	metadata species=$species_name ";
         my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;
 
         print $fh "hub_created_date=".printlabel($date_string)." ";
 
-
-        foreach my $attr_sample (@attrib_array_sample){
- 
-          my $value = $attr_sample->{"VALUE"};
-          my $key = $attr_sample->{"TAG"};
-          utf8::encode($value) ;
-          utf8::encode($key) ;
-          print $fh "sample:".printlabel_key($key)."=".printlabel($value)." ";
-                     
-        }   
-
-        foreach my $attr_exp (@attrib_array_experiment){
-
-          my $value = $attr_exp->{"VALUE"};
-          my $key = $attr_exp->{"TAG"};
-          utf8::encode($value) ;
-          utf8::encode($key) ;
-          print $fh "experiment:".printlabel_key($key)."=".printlabel($value)." ";
-
-        }
-        my @attrib_array_runs= @{$run->{"attributes"}};
-
-        foreach my $attr_run (@attrib_array_runs){
-
-          my $value = $attr_run->{"VALUE"};
-          my $key = $attr_run->{"TAG"};
-          utf8::encode($value) ;
-          utf8::encode($key) ;     
-          print $fh "run:".printlabel_key($key)."=".printlabel($value)." ";
-                     
-        }
         print $fh "\n\n";
 
       } #end of foreach run
@@ -347,14 +401,16 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
 
 
 if ($mkdir_flag2==1 and $mkdir_flag==1 and $touch_flag==1 and $touch_flag2==1 and $touch_flag3==1){
+
   print "..Done\n";
+
 }else{
-  print "..Error\n";
+
+  print "..ERROR\n";
+
 }
 
-##methods
-
-
+## METHODS ##
 
 sub getJsonResponse { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
 
@@ -457,5 +513,19 @@ sub getRightAssemblyName { # this method returns the right assembly name in the 
     $assembly_name = "SolTub_3.0";
   }
   return $assembly_name;
+
+}
+
+
+sub change_date {
+
+ my $date = shift;
+
+ if($date =~/((jan)|(January)|(Jan)|(feb)|(Feb)|(February)|(mar)|(March)|(Mar)|(apr)|(Apr)|(April)|(may)|(May)|(jun)|(Jun)|(June)|(jul)|(Jul)|(July)|(aug)|(Aug)|(August)|(sept)|(Sept)|(September)|(oct)|(Oct)|(October)|(nov)|(Nov)|(November)|(dec)|(Dec)|(December))/){
+   my $month = $1;
+   my $correct_month = $months{$month};
+   $date =~ s/$month/$correct_month/;
+ }
+ return $date;
 
 }

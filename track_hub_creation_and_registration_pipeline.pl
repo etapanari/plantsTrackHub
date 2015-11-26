@@ -21,6 +21,7 @@ use Time::HiRes;
 use LWP::UserAgent;
 use HTTP::Request::Common;
 use Time::Piece;
+#use Bio::EnsEMBL::ENA::SRA::BaseSraAdaptor qw(get_adaptor);
 
 my $registry_user_name ;
 my $registry_pwd ;
@@ -28,6 +29,7 @@ my $ftp_local_path ; # ie. ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs
 my $http_url ;  # ie. /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs;
 
 my $from_scratch; 
+my $use_ena_warehouse_meta;
 
 #my $ua = LWP::UserAgent->new;
 
@@ -36,12 +38,14 @@ GetOptions(
   "password=s" => \$registry_pwd,
   "local_ftp_dir_path=s" => \$ftp_local_path,
   "http_url=s" => \$http_url,   # string
-  "do_track_hubs_from_scratch"  => \$from_scratch  # flag
+  "do_track_hubs_from_scratch"  => \$from_scratch , # flag
+  "use_ena_warehouse_metadata"  => \$use_ena_warehouse_meta
 );
    
 #my $server_array_express =  "http://plantain:3000/eg";  # Robert's server where he stores his REST URLs
 my $http = HTTP::Tiny->new();
 my $registry_server = "http://193.62.54.43:5000";
+
 
 my $date_string = localtime();
 print "* Started running the pipeline on:\n";
@@ -58,9 +62,12 @@ if($from_scratch){
 
 
 print "\n* I am using this ftp server to eventually build my track hubs:\n\n $http_url\n\n";
-print "* I am using this Registry account:\n\n user:$registry_user_name \n password:$registry_pwd\n\n ";
+print "* I am using this Registry account:\n\n user:$registry_user_name \n password:$registry_pwd\n\n";
 
 $| = 1;  # it flashes the output
+
+
+my @study_ids_not_yet_in_ena;
 
 if ($from_scratch){
 
@@ -168,10 +175,71 @@ foreach my $ens_plant (keys %ens_plant_names) { # i loop through the ensembl pla
 
     $studyId_lastProcessedDates { $hash {"STUDY_ID"} } { $hash {"LAST_PROCESSED_DATE"} } =1 ;  # i get different last processed dates from different the runs of the study
     $study_Id_runId { $hash{"STUDY_ID"} } { $hash{"RUN_ID"} } = 1;
+    #$study_Id_runId { $hash{"STUDY_ID"} } {$hash{"SAMPLE_ID"}} { $hash{"RUN_ID"} } = 1;
         
   }
 }
 
+# foreach my $study_id (keys %study_Id_runId){
+# 
+#   foreach my $sample_id (keys %{$study_Id_runId{$study_id}}){
+#     foreach my $run_id (keys %{$study_Id_runId{$study_id}{$sample_id}}){
+# 
+#       print $study_id."\t".$sample_id."\t".$run_id."\n";
+#     }
+#   }
+# }
+# 
+# foreach my $study_id (keys %study_Id_runId){
+# 
+#   my $study_adaptor = get_adaptor('Study'); # I am using Dan Stain's ENA API
+# 
+#   my @studies =@{$study_adaptor->get_by_accession($study_id)}; # i am expecting to return 1 study object
+# 
+#   if (scalar @studies >1){
+#  
+#     print STDERR "ERROR in ".__FILE__." line ".__LINE__." : I get more than 1 study object from ENA using study id $study_id\n" ;
+#   }
+# 
+#   my $study =$studies[0]; # it should be only 1 study
+#   my @samples=@{ $study->samples()};
+#   #my @experiments = @{ $study->experiments()};
+#   #my @runs = @{ $study->runs()};
+# 
+#   #print $study_id. "\t".scalar @samples. "\t". scalar @experiments."\t".scalar @runs."\n";
+#   foreach my $sample (@samples){
+#     foreach my $experiment (@{$sample->experiments()}) {
+#       foreach my $run (@{$experiment->runs()}){
+#         next unless $runs{$run->accession};
+#         print $study_id."\t".$sample->accession()."\t".$experiment->accession()."\t".$run->accession."\n";
+#       }
+#     }
+#   }
+# 
+# }
+# 
+# sub getJsonResponse { # it returns the json response given the url-endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
+# 
+#   my $url = shift; 
+# 
+#   my $response = $http->get($url); 
+# 
+#   if($response->{success} ==1) { # if the response is successful then I get 1
+# 
+#     my $content=$response->{content};      # it prints whatever is the content of the URL, ie the json response
+#     my $json = decode_json($content);      # it returns an array reference 
+# 
+#     return $json;
+# 
+#   }else{
+# 
+#     my ($status, $reason) = ($response->{status}, $response->{reason}); 
+#     print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ."Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
+#     return 0;
+#   }
+# }
+# 
+# __END__
 my %studyId_date;
  
  
@@ -207,8 +275,23 @@ if($from_scratch) {
 
     $line_counter ++;
     print "$line_counter.\tcreating track hub for study $study_id\t"; 
-    my $script_output= `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+    my $script_output ;
+    if ( $use_ena_warehouse_meta) {
+      $script_output = `perl create_track_hub_using_ena_warehouse_matadata.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+    }else {
+      $script_output = `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+    }
     print $script_output;
+    if($script_output !~ /..Done/){  # if for some reason the track hub didn't manage to be made in the server, it shouldn't be registered in the Registry, for example Robert gives me a study id as completed that is not yet in ENA
+      print STDERR "Track hub of $study_id could not be made in the server - I have deleted the folder $study_id\n\n" ;
+      `rm -r $ftp_local_path/$study_id`;
+      $line_counter --;
+      push (@study_ids_not_yet_in_ena, $study_id);
+
+      if($? !=0){ # if rm is successful, it returns 0 
+        die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+      }
+     }
 
   }
 
@@ -334,7 +417,7 @@ if(scalar keys %studies_to_be_re_made !=0){
 
       }elsif($table_content[0] eq "diff_number_runs_only") {
 
-        print " (Different number of runs: Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")";
+        print " (Different number/ids of runs: Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")";
 
       }elsif($table_content[0] eq "diff_time_only") {
 
@@ -348,7 +431,7 @@ if(scalar keys %studies_to_be_re_made !=0){
         my $date_registry_last = localtime(get_Registry_hub_last_update($study_id))->strftime('%F %T');
         my $date_cram_created = localtime($studyId_date{$study_id})->strftime('%F %T');
 
-        print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created . " and also different number of runs: "." Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")"; ;
+        print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created . " and also different number/ids of runs: "." Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")"; ;
       }
     }
     print "\t";
@@ -365,25 +448,42 @@ if(scalar keys %studies_to_be_re_made !=0){
 
       `rm -r $ftp_local_path/$study_id`; # i first remove it from the server to re-do it
 
-      if($? !=0){ # if touch is successful, it returns 0
+      if($? !=0){ # if rm is successful, it returns 0
  
         die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
 
       }
-    }                
+    }             
+    my $output_script   ;
+    if ( $use_ena_warehouse_meta) {
 
-    my $output_script = `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+      $output_script = `perl create_track_hub_using_ena_warehouse_matadata.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+
+    }else{ 
+      $output_script = `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+    }
     print $output_script;
+    if($output_script !~ /..Done/){  # if for some reason the track hub didn't manage to be made in the server, it shouldn't be registered in the Registry, for example Robert gives me a study id as completed that is not yet in ENA
+      print STDERR "Track hub of $study_id could not be made in the server - I have deleted the folder $study_id\n\n" ;
+      `rm -r $ftp_local_path/$study_id`;
+      $line_counter --;
+      push (@study_ids_not_yet_in_ena, $study_id);
+
+      if($? !=0){ # if rm is successful, it returns 0 
+        die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+      }
+      delete $studies_to_be_re_made{$study_id};
+    }
   }
-  if($from_scratch){
-    my $date_string2 = localtime();
-    print " \n Finished creating the files,directories of the track hubs on the server on:\n";
-    print "Local date,time: $date_string2\n";
-  }
-  print "\n***********************************\n\n";
+#if($from_scratch){
+my $date_string2 = localtime();
+print " \n Finished creating the files,directories of the track hubs on the server on:\n";
+print "Local date,time: $date_string2\n";
+#}
+print "\n***********************************\n\n";
 }else{
   if(!$from_scratch){
-    print "\nThere are no updated or new tracks to be made from the last time the pipeline was run.\n";
+    print "\nThere are not any updated or new tracks to be made since the last time the pipeline was run.\n";
   }
 } 
 
@@ -396,8 +496,11 @@ if(!$from_scratch){
   %studies_to_register= %studies_to_be_re_made ;
 
 }else{
-
+  
   %studies_to_register = %studyId_assemblyName ;
+  foreach my $study_id (@study_ids_not_yet_in_ena) {
+    delete $studies_to_register{$study_id};
+  }
 }
 
 foreach my $study_id (keys %studies_to_register){ 
@@ -521,7 +624,11 @@ foreach my $hub_name (keys %{$all_track_hubs_in_registry_after_update}){
 
 print "There in total ". scalar (keys %{$all_track_hubs_in_registry_after_update}). " track hubs with total ".scalar (keys %distinct_runs)." runs registered in the Track Hub Registry\n\n\n";
 
+print "These studies were ready by Array Express but not yet in ENA , so no trak hubs were able to be created out of those, since the metadata needed for the track hubs are taken from ENA:\n";
+foreach my $study_id (@study_ids_not_yet_in_ena){
 
+  print $study_id."\n";
+}
 
 ### methods used 
 
@@ -861,4 +968,3 @@ sub hash_keys_are_equal{
   return $areEqual;
 }
 
-  

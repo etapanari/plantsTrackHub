@@ -32,19 +32,25 @@ GetOptions(
 
 my $server = "http://193.62.54.43:5000";
  
-my $endpoint = '/api/login';
-my $url = $server.$endpoint; 
-my $request = GET($url) ;
+my $auth_token = eval { registry_login($server, $username, $pwd); };
+if ($@) {
+  print STDERR "Couldn't login, cannot delete track hub $study_id: $@\n";
+  return;
+}
 
-$request->headers->authorization_basic($username, $pwd);
-my $response = $ua->request($request);
-my $auth_token = from_json($response->content)->{auth_token};
+# my $endpoint = '/api/login';
+# my $url = $server.$endpoint; 
+# my $request = GET($url) ;
+# 
+# $request->headers->authorization_basic($username, $pwd);
+# my $response = $ua->request($request);
+# my $auth_token = from_json($response->content)->{auth_token};
   
-$url = $server . '/api/trackhub/';
-$request = GET($url);
+my $url = $server . '/api/trackhub/';
+my $request = GET($url);
 $request->headers->header(user => $username);
 $request->headers->header(auth_token => $auth_token);
-$response = $ua->request($request);
+my $response = $ua->request($request);
 
 my $response_code= $response->code;
 my $counter_of_deleted=0;
@@ -75,4 +81,32 @@ if($response_code == 200) {
     
 } else {
   print STDERR "delete_registered_trackhubs.pl ERROR : Couldn't get list of trackhubs: %d", $response->{code};
+}
+
+
+sub registry_login {
+
+  my ($server, $user, $pass) = @_;
+  defined $server and defined $user and defined $pass
+    or die "Some required parameters are missing when trying to login in the Track Hub Registry\n";
+  
+  my $ua = LWP::UserAgent->new;
+  my $endpoint = '/api/login';
+  my $url = $server.$endpoint; 
+
+  my $request = GET($url);
+  $request->headers->authorization_basic($user, $pass);
+
+  my $response = $ua->request($request);
+  my $auth_token;
+
+  if ($response->is_success) {
+    $auth_token = from_json($response->content)->{auth_token};
+  } else {
+    die "Unable to login to Registry, reason: " .$response->code ." , ". $response->content."\n";
+  }
+  
+  defined $auth_token or die "Undefined authentication token when trying to login in the Track Hub Registry\n";
+  return $auth_token;
+
 }

@@ -16,7 +16,7 @@ use Getopt::Long;
 my $ua = LWP::UserAgent->new;
 
 # example call:
-#  perl register_track_hub.pl -username tapanari -password testing -hub_txt_file_location ftp://ftp.ensemblgenomes.org/pub/misc_data/TrackHubs/SRP050323/hub.txt -assembly_name_accession_pairs IWGSC1.0+popseq,0000
+#  perl register_track_hub.pl -username tapanari -password testing -hub_txt_file_location ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/SRP050323/hub.txt -assembly_name_accession_pairs IWGSC1.0+popseq,0000
 
 my $username ;
 my $pwd ;  # i pass the pwd when calling the pipeline, in the command line  # it is ensemblplants
@@ -35,17 +35,24 @@ my $server = "http://193.62.54.43:5000";
 $trackHub_txt_file_url =~ /.+\/(\w+)\/hub\.txt/ ;
 my $hub_name = $1;
 
-my $endpoint = '/api/login';
-my $url = $server.$endpoint; 
-my $request = GET($url) ;
 
-$request->headers->authorization_basic($username , $pwd);
-my $response = $ua->request($request);
+my $auth_token = eval { registry_login($server, $username, $pwd); };
+if ($@) {
+  print STDERR "Couldn't login, cannot register track hub $hub_name: $@\n";
+  return;
+}
 
-my $auth_token = from_json($response->content)->{auth_token};
-die "Unable to login" unless defined $auth_token;
+# my $endpoint = '/api/login';
+# my $url = $server.$endpoint; 
+# my $request = GET($url) ;
+# 
+# $request->headers->authorization_basic($username , $pwd);
+# my $response = $ua->request($request);
+# 
+# my $auth_token = from_json($response->content)->{auth_token};
+# die "Unable to login" unless defined $auth_token;
 
-$url = $server . '/api/trackhub';
+my $url = $server . '/api/trackhub';
 
   #my $assembly_name_accession_pairs=  "ASM242v1,GCA_000002425.1,IRGSP-1.0,GCA_000005425.2";
 my @words = split(/,/, $assembly_name_accession_pairs);
@@ -56,13 +63,13 @@ for(my $i=0; $i<$#words; $i+=2) {
 
 $| = 1;  # it flashes the output
 
-$request = 
+my $request = 
   POST($url,'Content-type' => 'application/json',
 	 #  assemblies => { "$assembly_name" => "$assembly_accession" } }));
     'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies }));
 $request->headers->header(user => $username);
 $request->headers->header(auth_token => $auth_token);
-$response = $ua->request($request);
+my $response = $ua->request($request);
 
 my $response_code= $response->code;
 
@@ -103,4 +110,29 @@ if($response_code == 201) {
   } 
 
 
+sub registry_login {
+
+  my ($server, $user, $pass) = @_;
+  defined $server and defined $user and defined $pass
+    or die "Some required parameters are missing when trying to login in the Track Hub Registry\n";
   
+  my $ua = LWP::UserAgent->new;
+  my $endpoint = '/api/login';
+  my $url = $server.$endpoint; 
+
+  my $request = GET($url);
+  $request->headers->authorization_basic($user, $pass);
+
+  my $response = $ua->request($request);
+  my $auth_token;
+
+  if ($response->is_success) {
+    $auth_token = from_json($response->content)->{auth_token};
+  } else {
+    die "Unable to login to Registry, reason: " .$response->code ." , ". $response->content."\n";
+  }
+  
+  defined $auth_token or die "Undefined authentication token when trying to login in the Track Hub Registry\n";
+  return $auth_token;
+
+}

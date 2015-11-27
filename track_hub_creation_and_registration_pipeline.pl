@@ -21,7 +21,6 @@ use Time::HiRes;
 use LWP::UserAgent;
 use HTTP::Request::Common;
 use Time::Piece;
-#use Bio::EnsEMBL::ENA::SRA::BaseSraAdaptor qw(get_adaptor);
 
 my $registry_user_name ;
 my $registry_pwd ;
@@ -31,7 +30,6 @@ my $http_url ;  # ie. /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs;
 my $from_scratch; 
 my $use_ena_warehouse_meta;
 
-#my $ua = LWP::UserAgent->new;
 
 GetOptions(
   "username=s" => \$registry_user_name ,
@@ -39,10 +37,9 @@ GetOptions(
   "local_ftp_dir_path=s" => \$ftp_local_path,
   "http_url=s" => \$http_url,   # string
   "do_track_hubs_from_scratch"  => \$from_scratch , # flag
-  "use_ena_warehouse_metadata"  => \$use_ena_warehouse_meta
+  "use_ena_warehouse_metadata"  => \$use_ena_warehouse_meta #flag
 );
    
-#my $server_array_express =  "http://plantain:3000/eg";  # Robert's server where he stores his REST URLs
 my $http = HTTP::Tiny->new();
 my $registry_server = "http://193.62.54.43:5000";
 
@@ -55,10 +52,14 @@ print "Local date,time: $date_string\n";
 print "\n* Ran this pipeline:\n\n";
 print "perl track_hub_creation_and_registration_pipeline.pl  -username $registry_user_name -password $registry_pwd -local_ftp_dir_path $ftp_local_path -http_url $http_url";
 if($from_scratch){
-  print " -do_track_hubs_from_scratch\n";
-} else{
-  print "\n";
+  print " -do_track_hubs_from_scratch";
 }
+
+if($use_ena_warehouse_meta){
+  print " -use_ena_warehouse_metadata";
+}
+print "\n";
+
 
 
 print "\n* I am using this ftp server to eventually build my track hubs:\n\n $http_url\n\n";
@@ -175,71 +176,10 @@ foreach my $ens_plant (keys %ens_plant_names) { # i loop through the ensembl pla
 
     $studyId_lastProcessedDates { $hash {"STUDY_ID"} } { $hash {"LAST_PROCESSED_DATE"} } =1 ;  # i get different last processed dates from different the runs of the study
     $study_Id_runId { $hash{"STUDY_ID"} } { $hash{"RUN_ID"} } = 1;
-    #$study_Id_runId { $hash{"STUDY_ID"} } {$hash{"SAMPLE_ID"}} { $hash{"RUN_ID"} } = 1;
         
   }
 }
 
-# foreach my $study_id (keys %study_Id_runId){
-# 
-#   foreach my $sample_id (keys %{$study_Id_runId{$study_id}}){
-#     foreach my $run_id (keys %{$study_Id_runId{$study_id}{$sample_id}}){
-# 
-#       print $study_id."\t".$sample_id."\t".$run_id."\n";
-#     }
-#   }
-# }
-# 
-# foreach my $study_id (keys %study_Id_runId){
-# 
-#   my $study_adaptor = get_adaptor('Study'); # I am using Dan Stain's ENA API
-# 
-#   my @studies =@{$study_adaptor->get_by_accession($study_id)}; # i am expecting to return 1 study object
-# 
-#   if (scalar @studies >1){
-#  
-#     print STDERR "ERROR in ".__FILE__." line ".__LINE__." : I get more than 1 study object from ENA using study id $study_id\n" ;
-#   }
-# 
-#   my $study =$studies[0]; # it should be only 1 study
-#   my @samples=@{ $study->samples()};
-#   #my @experiments = @{ $study->experiments()};
-#   #my @runs = @{ $study->runs()};
-# 
-#   #print $study_id. "\t".scalar @samples. "\t". scalar @experiments."\t".scalar @runs."\n";
-#   foreach my $sample (@samples){
-#     foreach my $experiment (@{$sample->experiments()}) {
-#       foreach my $run (@{$experiment->runs()}){
-#         next unless $runs{$run->accession};
-#         print $study_id."\t".$sample->accession()."\t".$experiment->accession()."\t".$run->accession."\n";
-#       }
-#     }
-#   }
-# 
-# }
-# 
-# sub getJsonResponse { # it returns the json response given the url-endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
-# 
-#   my $url = shift; 
-# 
-#   my $response = $http->get($url); 
-# 
-#   if($response->{success} ==1) { # if the response is successful then I get 1
-# 
-#     my $content=$response->{content};      # it prints whatever is the content of the URL, ie the json response
-#     my $json = decode_json($content);      # it returns an array reference 
-# 
-#     return $json;
-# 
-#   }else{
-# 
-#     my ($status, $reason) = ($response->{status}, $response->{reason}); 
-#     print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ."Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
-#     return 0;
-#   }
-# }
-# 
-# __END__
 my %studyId_date;
  
  
@@ -277,7 +217,7 @@ if($from_scratch) {
     print "$line_counter.\tcreating track hub for study $study_id\t"; 
     my $script_output ;
     if ( $use_ena_warehouse_meta) {
-      $script_output = `perl create_track_hub_using_ena_warehouse_matadata.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+      $script_output = `perl create_track_hub_using_ena_warehouse_metadata.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
     }else {
       $script_output = `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
     }
@@ -349,7 +289,7 @@ if($from_scratch) {
  
     my $roberts_last_processed_unix_time = $studyId_date {$common_study};
 
-    my $study_created_date_unix_time = eval { get_Registry_hub_last_update($common_study); };
+    my $study_created_date_unix_time = eval { get_Registry_hub_last_update($common_study) };
 
     if ($@) { # if the get_Registry_hub_last_update method fails to return the date of the track hub , then i re-do it anyways to be on the safe side
 
@@ -457,7 +397,7 @@ if(scalar keys %studies_to_be_re_made !=0){
     my $output_script   ;
     if ( $use_ena_warehouse_meta) {
 
-      $output_script = `perl create_track_hub_using_ena_warehouse_matadata.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
+      $output_script = `perl create_track_hub_using_ena_warehouse_metadata.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
 
     }else{ 
       $output_script = `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
@@ -627,7 +567,7 @@ print "There in total ". scalar (keys %{$all_track_hubs_in_registry_after_update
 print "These studies were ready by Array Express but not yet in ENA , so no trak hubs were able to be created out of those, since the metadata needed for the track hubs are taken from ENA:\n";
 foreach my $study_id (@study_ids_not_yet_in_ena){
 
-  print $study_id."\n";
+  print $study_id." (".scalar keys %{$study_Id_runId{$study_id}}." runs )\n";
 }
 
 ### methods used 
@@ -705,7 +645,7 @@ sub give_all_Registered_track_hubs{
 
   my %track_hub_names;
 
-  my $auth_token = eval { registry_login($registry_server, $registry_user_name, $registry_pwd); };
+  my $auth_token = eval { registry_login($registry_server, $registry_user_name, $registry_pwd) };
   if ($@) {
     print "Couldn't login, skipping getting all registered trackhubs: $@\n";
     return;
@@ -757,7 +697,7 @@ sub get_Registry_hub_last_update {
 
   my $name = shift;  # track hub name, ie study_id
 
-  my $auth_token = eval { registry_login($registry_server, $registry_user_name, $registry_pwd); };
+  my $auth_token = eval { registry_login($registry_server, $registry_user_name, $registry_pwd) };
   if ($@) {
     print "Couldn't login, skipping getting all registered trackhubs\n";
     return;
@@ -832,7 +772,7 @@ sub give_all_runs_of_study_from_Registry {
   my $name = shift;  # track hub name, ie study_id
   
 
-  my $auth_token = eval { registry_login($registry_server, $registry_user_name, $registry_pwd); };
+  my $auth_token = eval { registry_login($registry_server, $registry_user_name, $registry_pwd) };
   if ($@) {
     print "Couldn't login, skipping getting all registered trackhubs\n";
     return;

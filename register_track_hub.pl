@@ -36,22 +36,11 @@ $trackHub_txt_file_url =~ /.+\/(\w+)\/hub\.txt/ ;
 my $hub_name = $1;
 
 
-my $auth_token = eval { registry_login($server, $username, $pwd); };
+my $auth_token = eval { registry_login($server, $username, $pwd) };
 if ($@) {
   print STDERR "Couldn't login, cannot register track hub $hub_name: $@\n";
   return;
 }
-
-# my $endpoint = '/api/login';
-# my $url = $server.$endpoint; 
-# my $request = GET($url) ;
-# 
-# $request->headers->authorization_basic($username , $pwd);
-# my $response = $ua->request($request);
-# 
-# my $auth_token = from_json($response->content)->{auth_token};
-# die "Unable to login" unless defined $auth_token;
-
 my $url = $server . '/api/trackhub';
 
   #my $assembly_name_accession_pairs=  "ASM242v1,GCA_000002425.1,IRGSP-1.0,GCA_000005425.2";

@@ -521,7 +521,7 @@ sub change_date {
 
  my $date = shift;
 
- if($date =~/((jan)|(January)|(Jan)|(feb)|(Feb)|(February)|(mar)|(March)|(Mar)|(apr)|(Apr)|(April)|(may)|(May)|(jun)|(Jun)|(June)|(jul)|(Jul)|(July)|(aug)|(Aug)|(August)|(sept)|(Sept)|(September)|(oct)|(Oct)|(October)|(nov)|(Nov)|(November)|(dec)|(Dec)|(December))/){
+ if($date =~/(jan|January|Jan|feb|Feb|February|mar|March|Mar|apr|Apr|April|may|May|jun|Jun|June|jul|Jul|July|aug|Aug|August|sept|Sept|September|oct|Oct|October|nov|Nov|November|dec|Dec|December)/){
    my $month = $1;
    my $correct_month = $months{$month};
    $date =~ s/$month/$correct_month/;

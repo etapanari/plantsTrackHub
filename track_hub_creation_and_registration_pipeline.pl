@@ -60,8 +60,6 @@ if($use_ena_warehouse_meta){
 }
 print "\n";
 
-
-
 print "\n* I am using this ftp server to eventually build my track hubs:\n\n $http_url\n\n";
 print "* I am using this Registry account:\n\n user:$registry_user_name \n password:$registry_pwd\n\n";
 

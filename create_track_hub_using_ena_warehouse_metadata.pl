@@ -4,6 +4,7 @@
 
 # how to call it:
 # perl create_track_hub_using_ena_warehouse_metadata.pl -study_id SRP036860 -local_ftp_dir_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs -http_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs
+# perl create_track_hub_using_ena_warehouse_metadata.pl -study_id SRP036860 -local_ftp_dir_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/ena_warehouse_meta -http_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/ena_warehouse_meta
 
 use strict ;
 use warnings;
@@ -78,7 +79,7 @@ my %run_id_location; # it stores as key the run id and value the location in the
 my %run_assembly; #  it stores as key the run id and value the assembly name 
 my %run_robert_species_name;
 my %sample_robert_species_name;
-my %study_sample_ids;
+my %study_sample_run_ids;
 
 # a line of this call:  http://plantain:3000/eg/getLibrariesByStudyId/SRP033494
 #[{"STUDY_ID":"SRP033494","SAMPLE_ID":"SAMN02434874","RUN_ID":"SRR1042754","ORGANISM":"arabidopsis_thaliana","STATUS":"Complete","ASSEMBLY_USED":"TAIR10","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:11:03",
@@ -95,7 +96,7 @@ foreach my $hash_ref (@runs_response){
     $run_assembly { $hash{"RUN_ID"} } = $hash{"ASSEMBLY_USED"};
     $run_robert_species_name {$hash{"RUN_ID"}} = $hash {"ORGANISM"};
     $sample_robert_species_name {$hash{"SAMPLE_ID"}} = $hash {"ORGANISM"};
-    $study_sample_ids{$hash{"STUDY_ID"}} {$hash{"SAMPLE_ID"}} {$hash{"RUN_ID"}} = 1;
+    $study_sample_run_ids{$hash{"STUDY_ID"}} {$hash{"SAMPLE_ID"}} {$hash{"RUN_ID"}} = 1;
 
   }
 }
@@ -179,6 +180,7 @@ foreach my $assembly_name (keys %assembly_names){ # For every assembly I make a 
     }
 }
 
+
 #hub.txt content:
 
 #hub SRP036643
@@ -201,9 +203,13 @@ if($? !=0){ # if touch is successful, it returns 0
   $touch_flag=1;
 }
 
-my $study_adaptor = get_adaptor('Study'); # I am using Dan Stain's ENA API
+my $study_adaptor = eval { get_adaptor('Study'); }; # I am using Dan Stain's ENA API
 
-my @studies =@{$study_adaptor->get_by_accession($study_id)}; # i am expecting to return 1 study object
+my @studies = eval { @{$study_adaptor->get_by_accession($study_id)} }; # i am expecting to return 1 study object
+
+if ($@) {
+  print "could not get study adaptor of study id $study_id\n" and die "ENA not responding for study $study_id\n";
+}
 
 if (scalar @studies ==0){
 
@@ -259,6 +265,7 @@ foreach my $assembly_name (keys %assembly_names){ # I create a stanza for every 
   print $fh2 "trackDb ".$assembly_name."/trackDb.txt"."\n\n"; 
 }
 
+
 # trackDb.txt content:
 
 #track SRR1161753
@@ -289,7 +296,7 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
 
   open(my $fh, '>', $trackDb_txt_file) or die "Error in ".__FILE__." line ".__LINE__." Could not open file '$trackDb_txt_file' $!";
 
-  foreach my $sample_id ( keys %{ $study_sample_ids{$study_id}} ) { 
+  foreach my $sample_id ( keys %{ $study_sample_run_ids{$study_id}} ) { 
 
 ## print sample super track ##
     print $fh "track ".$sample_id."\n";
@@ -324,7 +331,7 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
 ## end of the sample super track
 ## now printing the runs of the sample
 
-    foreach my $run_id (keys %{ $study_sample_ids{$study_id} {$sample_id}}){
+    foreach my $run_id (keys %{ $study_sample_run_ids{$study_id} {$sample_id}}){
 
       if($done_runs {$run_id}{$assembly_name}){  # i do this check because i want to print every run once in the trackDb.txt file. see line 224 for comments
         next;
@@ -502,11 +509,11 @@ sub get_all_sample_keys{
 
 }
 
-sub get_metadata_for_sample {
+sub get_metadata_for_sample { # i am calling this method for a sample id
 
   my @key_values = @{get_all_sample_keys()};
   my $sample_id = shift;
-  my $url = "http://www.ebi.ac.uk/ena/data/warehouse/search?query=%22accession=$sample_id%22&result=sample&display=report&fields=";
+  my $url = "http://www.ebi.ac.uk/ena/data/warehouse/search?query=\%22accession=$sample_id\%22&result=sample&display=report&fields=";
   my $counter = 0;
   foreach my $key_value (@key_values){
 
@@ -524,7 +531,9 @@ sub get_metadata_for_sample {
 
 sub get_metadata_response_from_ena_warehouse_rest_call {
 
+
   my $url =  shift;
+  print $url."\n";
   my %metadata_key_value_pairs;
   my $ua = LWP::UserAgent->new;
   my $response = $ua->get($url); 
@@ -574,7 +583,7 @@ sub change_date {
 
  my $date = shift;
 
- if($date =~/(jan|feb|mar)apr)|(Apr)|(April)|(may)|(May)|(jun)|(Jun)|(June)|(jul)|(Jul)|(July)|(aug)|(Aug)|(August)|(sept)|(Sept)|(September)|(oct)|(Oct)|(October)|(nov)|(Nov)|(November)|(dec)|(Dec)|(December))/i){
+ if($date =~/(jan|January|Jan|feb|Feb|February|mar|March|Mar|apr|Apr|April|may|May|jun|Jun|June|jul|Jul|July|aug|Aug|August|sept|Sept|September|oct|Oct|October|nov|Nov|November|dec|Dec|December)/){
    my $month = $1;
    my $correct_month = $months{$month};
    $date =~ s/$month/$correct_month/;

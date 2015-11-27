@@ -32,21 +32,13 @@ GetOptions(
 
 my $server = "http://193.62.54.43:5000";
  
-my $auth_token = eval { registry_login($server, $username, $pwd); };
+my $auth_token = eval { registry_login($server, $username, $pwd) };
 if ($@) {
   print STDERR "Couldn't login, cannot delete track hub $study_id: $@\n";
   return;
 }
 
-# my $endpoint = '/api/login';
-# my $url = $server.$endpoint; 
-# my $request = GET($url) ;
-# 
-# $request->headers->authorization_basic($username, $pwd);
-# my $response = $ua->request($request);
-# my $auth_token = from_json($response->content)->{auth_token};
-  
-my $url = $server . '/api/trackhub/';
+ my $url = $server . '/api/trackhub/';
 my $request = GET($url);
 $request->headers->header(user => $username);
 $request->headers->header(auth_token => $auth_token);

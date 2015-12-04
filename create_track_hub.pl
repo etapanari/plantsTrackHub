@@ -13,6 +13,8 @@ use Getopt::Long;
 use utf8;
 use Bio::EnsEMBL::ENA::SRA::BaseSraAdaptor qw(get_adaptor);
 use POSIX qw(strftime); # to get GMT time stamp
+use TransformDate;
+use ArrayExpress;
 
 
 my $study_id ;
@@ -30,46 +32,7 @@ my $server_array_express =  "http://plantain:3000/eg"; # Robert's server where h
 
 my $http = HTTP::Tiny->new();
 
-my %months = (
-        "jan" => "01",
-        "feb" => "02",
-        "mar" => "03",
-        "apr" => "04",
-        "may" => "05",
-        "jun" => "06",
-        "jul" => "07",
-        "aug" => "08",
-        "sep" => "09",
-        "oct" => "10",
-        "nov" => "11",
-        "dec" => "12",
-        "Jan" => "01",
-        "Feb" => "02",
-        "Mar" => "03",
-        "Apr" => "04",
-        "May" => "05",
-        "Jun" => "06",
-        "Jul" => "07",
-        "Aug" => "08",
-        "Sep" => "09",
-        "Oct" => "10",
-        "Nov" => "11",
-        "Dec" => "12",
-        "January" => "01",
-        "February" => "02",
-        "March" => "03",
-        "April" => "04",
-        "June" => "06",
-        "July" => "07",
-        "Aug" => "08",
-        "September" => "09",
-        "October" => "10",
-        "November" => "11",
-        "December" => "12"
-);
-
-
-my %robert_plant_names = %{getPlantNamesArrayExpressAPI()}; 
+my %robert_plant_names = %{ArrayExpress->getPlantNamesArrayExpressAPI()}; 
 
 my $get_runs_from_study_url= $server_array_express . "/getLibrariesByStudyId/$study_id"; # i get all the runs of the study
     
@@ -205,7 +168,7 @@ my $study_adaptor = get_adaptor('Study'); # I am using Dan Stain's ENA API
 my @studies = eval {@{$study_adaptor->get_by_accession($study_id)} }; # i am expecting to return 1 study object
 
 if ($@) {
-  print "..ERROR - this will be deleted\n" and die "ENA doesn't still have the submission of study $study_id , hence I cannot yet create a track hub for this study \n";
+  print "..ERROR - this will be deleted (check in the STDERR)\n" and die "ENA doesn't still have the submission of study $study_id , hence I cannot yet create a track hub for this study \n";
 }
 
 if (scalar @studies >1){
@@ -341,7 +304,7 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
       next if($key =~/ENA-\w+-COUNT/) ;
       utf8::encode($key) ;
       if($key =~/date/ and $value =~/[(a-z)|(A-Z)]/){ # if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
-        $value = change_date($value);
+        $value = TransformDate->change_date($value);
       }
       print $fh printlabel_key($key)."=".printlabel($value)." ";
                      
@@ -382,12 +345,12 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
         print $fh $long_label_ENA;
 
         print $fh "	type bam\n";
-        print $fh "	metadata species=$species_name ";
-        my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;
+        #print $fh "	metadata species=$species_name ";
+        #my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;
 
-        print $fh "hub_created_date=".printlabel($date_string)." ";
+        #print $fh "hub_created_date=".printlabel($date_string)." ";
 
-        print $fh "\n\n";
+        print $fh "\n";
 
       } #end of foreach run
 
@@ -464,32 +427,6 @@ sub printlabel_key {  # i want they key of the key-value pair of the metadata to
  
 }
 
-
-sub getPlantNamesArrayExpressAPI {  # returns reference to a hash
-
-  my $get_plant_names_url= $server_array_express . "/getOrganisms/plants" ; # i get all organism names that robert uses for plants to date
-
-  my %robert_plant_names;
-
-#response:
-#[{"ORGANISM":"arabidopsis_thaliana"},{"ORGANISM":"brassica_rapa"},{"ORGANISM":"hordeum_vulgare"},{"ORGANISM":"hordeum_vulgare_subsp._vulgare"},
-#{"ORGANISM":"medicago_truncatula"},{"ORGANISM":"oryza_sativa"},{"ORGANISM":"oryza_sativa_japonica_group"},{"ORGANISM":"physcomitrella_patens"},
-#{"ORGANISM":"populus_trichocarpa"},{"ORGANISM":"sorghum_bicolor"},{"ORGANISM":"triticum_aestivum"},{"ORGANISM":"vitis_vinifera"},{"ORGANISM":"zea_mays"}]
-
-  my @plant_names_response = @{getJsonResponse($get_plant_names_url)};  # i call here the method that I made above
-
-  foreach my $hash_ref (@plant_names_response){
-
-    my %hash = %{$hash_ref};
-
-    $robert_plant_names{ $hash{"ORGANISM"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://plantain:3000/eg/getOrganisms/plants
-        
-  }
-
-  return \%robert_plant_names;
-
-}
-
 sub getRightAssemblyName { # this method returns the right assembly name in the cases where Robert takes the assembly accession instead of the assembly name due to our bug
 
   my $assembly_string = shift;
@@ -513,19 +450,5 @@ sub getRightAssemblyName { # this method returns the right assembly name in the 
     $assembly_name = "SolTub_3.0";
   }
   return $assembly_name;
-
-}
-
-
-sub change_date {
-
- my $date = shift;
-
- if($date =~/(jan|January|Jan|feb|Feb|February|mar|March|Mar|apr|Apr|April|may|May|jun|Jun|June|jul|Jul|July|aug|Aug|August|sept|Sept|September|oct|Oct|October|nov|Nov|November|dec|Dec|December)/){
-   my $month = $1;
-   my $correct_month = $months{$month};
-   $date =~ s/$month/$correct_month/;
- }
- return $date;
 
 }

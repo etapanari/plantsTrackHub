@@ -30,6 +30,7 @@ my $http_url ;  # ie. /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs;
 my $from_scratch; 
 my $use_ena_warehouse_meta;
 
+my $start_time = time();
 
 GetOptions(
   "username=s" => \$registry_user_name ,
@@ -61,11 +62,26 @@ if($use_ena_warehouse_meta){
 print "\n";
 
 print "\n* I am using this ftp server to eventually build my track hubs:\n\n $http_url\n\n";
-print "* I am using this Registry account:\n\n user:$registry_user_name \n password:$registry_pwd\n\n";
+print "* I am using this Registry account:\n\n user:$registry_user_name \n password:$registry_pwd\n";
 
 $| = 1;  # it flashes the output
 
+my $all_track_hubs_in_registry_after_update_before_running_pipeline = give_all_Registered_track_hubs();
+my %distinct_runs_before_running_pipeline;
 
+foreach my $hub_name (keys %{$all_track_hubs_in_registry_after_update_before_running_pipeline}){
+  
+  map { $distinct_runs_before_running_pipeline{$_}++ } keys %{give_all_runs_of_study_from_Registry($hub_name)};
+}
+
+print "\n*Before starting running the updates, there were in total ". scalar (keys %{$all_track_hubs_in_registry_after_update_before_running_pipeline}). " track hubs with total ".scalar (keys %distinct_runs_before_running_pipeline)." runs registered in the Track Hub Registry\n";
+
+$| = 1;  # it flashes the output
+
+if (! -d $ftp_local_path) {
+  print "This directory: $ftp_local_path does not exist, I will make it now\n";
+  `mkdir $ftp_local_path`;
+}
 my @study_ids_not_yet_in_ena;
 
 if ($from_scratch){
@@ -355,21 +371,21 @@ if(scalar keys %studies_to_be_re_made !=0){
 
       }elsif($table_content[0] eq "diff_number_runs_only") {
 
-        print " (Different number/ids of runs: Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")";
+        print " (Updated) Different number/ids of runs: Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2];
 
       }elsif($table_content[0] eq "diff_time_only") {
 
         my $date_registry_last = localtime(get_Registry_hub_last_update($study_id))->strftime('%F %T');
         my $date_cram_created = localtime($studyId_date{$study_id})->strftime('%F %T');
 
-        print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created .")";
+        print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created;
 
       }elsif($table_content[0] eq "diff_number_runs_diff_time"){
 
         my $date_registry_last = localtime(get_Registry_hub_last_update($study_id))->strftime('%F %T');
         my $date_cram_created = localtime($studyId_date{$study_id})->strftime('%F %T');
 
-        print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created . " and also different number/ids of runs: "." Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2].")"; ;
+        print " (Updated) Last registered date: ".$date_registry_last  . ", Max last processed date of CRAMS from study: ".$date_cram_created . " and also different number/ids of runs: "." Last Registered number of runs: ".$table_content[1].", Runs in Array Express currently: ".$table_content[2];
       }
     }
     print "\t";
@@ -546,6 +562,7 @@ print " Finished running the pipeline on:\n";
 print "Local date,time: $date_string_end\n";
 
 
+
 my $total_disc_space_of_track_hubs = `du -sh $ftp_local_path`;
   
 print "\nTotal disc space occupied in $ftp_local_path is:\n $total_disc_space_of_track_hubs\n";
@@ -560,13 +577,18 @@ foreach my $hub_name (keys %{$all_track_hubs_in_registry_after_update}){
   map { $distinct_runs{$_}++ } keys %{give_all_runs_of_study_from_Registry($hub_name)};
 }
 
-print "There in total ". scalar (keys %{$all_track_hubs_in_registry_after_update}). " track hubs with total ".scalar (keys %distinct_runs)." runs registered in the Track Hub Registry\n\n\n";
+print "There in total ". scalar (keys %{$all_track_hubs_in_registry_after_update}). " track hubs with total ".scalar (keys %distinct_runs)." runs registered in the Track Hub Registry\n\n";
 
 print "These studies were ready by Array Express but not yet in ENA , so no trak hubs were able to be created out of those, since the metadata needed for the track hubs are taken from ENA:\n";
+my $count_unready_studies=0;
 foreach my $study_id (@study_ids_not_yet_in_ena){
-
-  print $study_id." (".scalar keys %{$study_Id_runId{$study_id}}." runs )\n";
+  $count_unready_studies++;
+  my %runs_hash = %{$study_Id_runId{$study_id}};
+  print $count_unready_studies.".".$study_id." (".scalar (keys %runs_hash)." runs)\n";
 }
+
+
+#printf ("Total time to run : %d\n", time() - $start_time);
 
 ### methods used 
 
@@ -826,7 +848,11 @@ sub give_all_runs_of_study_from_Registry {
     if ($response->is_success) {
 
       $doc = from_json($response->content);
-      map { $runs{$_}++ } keys %{$doc->{configuration}};
+
+
+      foreach my $sample (keys %{$doc->{configuration}}) {
+	map { $runs{$_}++ } keys %{$doc->{configuration}{$sample}{members}}; 
+      }
     } else {  
       die "Couldn't get trackdb at ", $trackdb->{uri} , " from study $name in the Registry when trying to get all its runs, reason: " .$response->code ." , ". $response->content."\n";
     }
@@ -852,8 +878,8 @@ sub give_number_of_dirs_in_ftp {
 
   my $ftp_location = $ftp_local_path;
 
-  my @files = `ls $ftp_local_path`;
-
+  my @files = `ls $ftp_local_path` ;
+  
   return  scalar @files;
 }
 

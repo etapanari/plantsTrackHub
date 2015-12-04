@@ -14,6 +14,8 @@ use Getopt::Long;
 use utf8;
 use Bio::EnsEMBL::ENA::SRA::BaseSraAdaptor qw(get_adaptor);
 use POSIX qw(strftime); # to get GMT time stamp
+use ArrayExpress;
+use TransformDate;
 
 my $study_id ;
 my $ftp_dir_full_path ;   #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
@@ -30,45 +32,7 @@ my $server_array_express =  "http://plantain:3000/eg"; # Robert's server where h
 
 my $http = HTTP::Tiny->new();
 
-my %months = (
-        "jan" => "01",
-        "feb" => "02",
-        "mar" => "03",
-        "apr" => "04",
-        "may" => "05",
-        "jun" => "06",
-        "jul" => "07",
-        "aug" => "08",
-        "sep" => "09",
-        "oct" => "10",
-        "nov" => "11",
-        "dec" => "12",
-        "Jan" => "01",
-        "Feb" => "02",
-        "Mar" => "03",
-        "Apr" => "04",
-        "May" => "05",
-        "Jun" => "06",
-        "Jul" => "07",
-        "Aug" => "08",
-        "Sep" => "09",
-        "Oct" => "10",
-        "Nov" => "11",
-        "Dec" => "12",
-        "January" => "01",
-        "February" => "02",
-        "March" => "03",
-        "April" => "04",
-        "June" => "06",
-        "July" => "07",
-        "Aug" => "08",
-        "September" => "09",
-        "October" => "10",
-        "November" => "11",
-        "December" => "12"
-);
-
-my %robert_plant_names = %{getPlantNamesArrayExpressAPI()}; 
+my %robert_plant_names = %{ArrayExpress->getPlantNamesArrayExpressAPI()}; 
 
 my $get_runs_from_study_url= $server_array_express . "/getLibrariesByStudyId/$study_id"; # i get all the runs of the study
     
@@ -138,7 +102,7 @@ if($? !=0){ # if ls is successful, it returns 0
 
 }
 
-if($ls_output=~/$study_id/){
+if($ls_output=~/$study_id/){ # if the study id folder exists, i remove it and then re-do it
 
   `rm -r $ftp_dir_full_path/$study_id` ;
 
@@ -151,7 +115,7 @@ if($ls_output=~/$study_id/){
 
 `mkdir $ftp_dir_full_path/$study_id`;
 
-my $mkdir_flag=0;
+my $mkdir_flag=0; # if these flags are all 1 at the end of the script, it means that the track hub was created successfully
 
 if($? !=0){ # if mkdir is successful, it returns 0
  
@@ -208,7 +172,7 @@ my $study_adaptor = eval { get_adaptor('Study'); }; # I am using Dan Stain's ENA
 my @studies = eval { @{$study_adaptor->get_by_accession($study_id)} }; # i am expecting to return 1 study object
 
 if ($@) {
-  print "could not get study adaptor of study id $study_id\n" and die "ENA not responding for study $study_id\n";
+  print "..ERROR - this will be deleted (check in the STDERR)\n" and die "ENA doesn't still have the submission of study $study_id , hence I cannot yet create a track hub for this study \n";
 }
 
 if (scalar @studies ==0){
@@ -225,16 +189,33 @@ my $study =$studies[0]; # it should be only 1 study
 
 open(my $fh, '>', $hub_txt_file) or die "Could not open file '$hub_txt_file' $!";
 
-print $fh "hub ".$study->accession."\n"; 
-print $fh "shortLabel "."RNA-seq alignment hub ".$study->accession."\n"; 
+print $fh "hub ";
+eval { $study->accession }; 
 
-my $long_label = "longLabel ".$study->title." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study->accession."\">".$study->accession."</a>"."\n";
+if ($@) {
+  die "Died - I cannot get study accession from call study->accession from Dan's module for study $study_id\n";
+}else{
 
-utf8::encode($long_label) ; # i do this as from ENA there are some funny data like library names in the long label of the study and perl thinks it's non-ASCii character, while they are not.
-print $fh $long_label;
-print $fh "genomesFile genomes.txt\n";
-print $fh "email tapanari\@ebi.ac.uk\n";
+  print $fh $study->accession."\n";
+  print $fh "shortLabel "."RNA-seq alignment hub ".$study->accession."\n"; 
+}
 
+
+eval {$study->title};
+
+if ($@) {
+  die "I cannot get study title from call strudy->title from Dan's module for study $study_id\n";
+}else{
+
+  print $fh $study->accession."\n";
+  my $long_label = "longLabel ".$study->title." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study->accession."\">".$study->accession."</a>"."\n";
+
+  utf8::encode($long_label) ; # i do this as from ENA there are some funny data like library names in the long label of the study and perl thinks it's non-ASCii character, while they are not.
+  print $fh $long_label;
+  print $fh "genomesFile genomes.txt\n";
+  print $fh "email tapanari\@ebi.ac.uk\n";
+
+}
 
 #genomes.txt content 
 
@@ -276,6 +257,9 @@ foreach my $assembly_name (keys %assembly_names){ # I create a stanza for every 
 
 my $touch_flag3=0;
 my %done_runs; # i have to store the run_id in this hash as there was an occassion where different samples had the same run_id and then the same run was multiple times as track in the trackDb.txt file (as track) which is not valid by UCSC
+my $metadata_found_flag=1;
+    
+my $meta_keys = get_all_sample_keys();
 
 foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of the study (if there is more than 1 assembly for a given study), I create a trackDb.txt file
 
@@ -293,7 +277,6 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
     $touch_flag3=1;
   }
 
-
   open(my $fh, '>', $trackDb_txt_file) or die "Error in ".__FILE__." line ".__LINE__." Could not open file '$trackDb_txt_file' $!";
 
   foreach my $sample_id ( keys %{ $study_sample_run_ids{$study_id}} ) { 
@@ -307,6 +290,7 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
       $longLabel_sample = "longLabel ".give_title_from_ena($sample_id)."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
     }else{
       $longLabel_sample = "longLabel "."ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
+      print STDERR "\nCould not get sample title from ENA API for sample $sample_id\n";
     }
     utf8::encode($longLabel_sample);  
     print $fh $longLabel_sample."\n" ;
@@ -314,16 +298,24 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
 
     print $fh "metadata hub_created_date=".printlabel($date_string)." ";
 
-    my %metadata_pairs = %{get_metadata_response_from_ena_warehouse_rest_call (get_metadata_for_sample($sample_id))};
+    if (get_metadata_response_from_ena_warehouse_rest_call (create_url_for_call_sample_metadata($sample_id,$meta_keys)) ==0){
 
-    foreach my $meta_key (keys %metadata_pairs) {  # printing the sample metadata 
-      utf8::encode($meta_key) ;
-      my $meta_value = $metadata_pairs{$meta_key} ;
-      utf8::encode($meta_value) ;
-      if($meta_key =~/date/ and $meta_value =~/[(a-z)|(A-Z)]/){ # if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
-        $meta_value = change_date($meta_value);
+      print STDERR "No metadata values found for sample $sample_id of study $study_id\n";
+      $metadata_found_flag=0;
+
+    }else{  # if there is metadata
+      my %metadata_pairs = %{get_metadata_response_from_ena_warehouse_rest_call (create_url_for_call_sample_metadata($sample_id,$meta_keys))};
+
+      foreach my $meta_key (keys %metadata_pairs) {  # printing the sample metadata 
+        utf8::encode($meta_key) ;
+        my $meta_value = $metadata_pairs{$meta_key} ;
+        utf8::encode($meta_value) ;
+        if($meta_key =~/date/ and $meta_value =~/[(a-z)|(A-Z)]/){ # if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
+          $meta_value = TransformDate->change_date($meta_value);
+        }
+        print $fh printlabel_key($meta_key)."=".printlabel($meta_value)." ";
       }
-      print $fh printlabel_key($meta_key)."=".printlabel($meta_value)." ";
+
     }
 
     print $fh "\n\n";
@@ -353,18 +345,20 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
       my $short_label_ENA="	shortLabel ENA_run:".$run_id."\n";
       print $fh $short_label_ENA;
 
-      my $long_label_ENA = "	longLabel ".give_title_from_ena($run_id)."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run_id."\">".$run_id."</a>"."\n" ;
+      my $long_label_ENA;
+      my $ena_title = give_title_from_ena($run_id);
+      if(!$ena_title){
+        print STDERR "run id $run_id was not found to have a title in ENA\n";
+        $long_label_ENA = "	longLabel "."ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run_id."\">".$run_id."</a>"."\n" ;
+      }else{
+        $long_label_ENA = "	longLabel ".$ena_title."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run_id."\">".$run_id."</a>"."\n" ;
+      }
+
       utf8::encode($long_label_ENA) ;
       print $fh $long_label_ENA;
 
       print $fh "	type bam\n";
-      print $fh "	metadata species=$species_name ";
-      my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;
-
-      print $fh "hub_created_date=".printlabel($date_string)." ";
-
-
-      print $fh "\n\n";
+      print $fh "\n";
 
     } #end of foreach run
 
@@ -376,9 +370,11 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
 
 
 if ($mkdir_flag2==1 and $mkdir_flag==1 and $touch_flag==1 and $touch_flag2==1 and $touch_flag3==1){
-
-  print "..Done\n";
-
+  if ($metadata_found_flag == 0) {
+    print "..Done - but no metadata found for at least 1 sample (check STDERR)\n";
+  }else{
+    print "..Done\n";
+  }
 }else{
 
   print "..Error\n";
@@ -440,31 +436,6 @@ sub printlabel_key {  # i want they key of the key-value pair of the metadata to
 }
 
 
-sub getPlantNamesArrayExpressAPI {  # returns reference to a hash
-
-  my $get_plant_names_url= $server_array_express . "/getOrganisms/plants" ; # i get all organism names that robert uses for plants to date
-
-  my %robert_plant_names;
-
-#response:
-#[{"ORGANISM":"arabidopsis_thaliana"},{"ORGANISM":"brassica_rapa"},{"ORGANISM":"hordeum_vulgare"},{"ORGANISM":"hordeum_vulgare_subsp._vulgare"},
-#{"ORGANISM":"medicago_truncatula"},{"ORGANISM":"oryza_sativa"},{"ORGANISM":"oryza_sativa_japonica_group"},{"ORGANISM":"physcomitrella_patens"},
-#{"ORGANISM":"populus_trichocarpa"},{"ORGANISM":"sorghum_bicolor"},{"ORGANISM":"triticum_aestivum"},{"ORGANISM":"vitis_vinifera"},{"ORGANISM":"zea_mays"}]
-
-  my @plant_names_response = @{getJsonResponse($get_plant_names_url)};  # i call here the method that I made above
-
-  foreach my $hash_ref (@plant_names_response){
-
-    my %hash = %{$hash_ref};
-
-    $robert_plant_names{ $hash{"ORGANISM"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://plantain:3000/eg/getOrganisms/plants
-        
-  }
-
-  return \%robert_plant_names;
-
-}
-
 sub getRightAssemblyName { # this method returns the right assembly name in the cases where Robert takes the assembly accession instead of the assembly name due to our bug
 
   my $assembly_string = shift;
@@ -509,10 +480,11 @@ sub get_all_sample_keys{
 
 }
 
-sub get_metadata_for_sample { # i am calling this method for a sample id
+sub create_url_for_call_sample_metadata { # i am calling this method for a sample id
 
-  my @key_values = @{get_all_sample_keys()};
   my $sample_id = shift;
+  my $table_ref= shift;
+  my @key_values = @{$table_ref};
   my $url = "http://www.ebi.ac.uk/ena/data/warehouse/search?query=\%22accession=$sample_id\%22&result=sample&display=report&fields=";
   my $counter = 0;
   foreach my $key_value (@key_values){
@@ -529,11 +501,9 @@ sub get_metadata_for_sample { # i am calling this method for a sample id
 
 }
 
-sub get_metadata_response_from_ena_warehouse_rest_call {
-
+sub get_metadata_response_from_ena_warehouse_rest_call {  # returns a hash ref if successful, or 0 if not successful
 
   my $url =  shift;
-  print $url."\n";
   my %metadata_key_value_pairs;
   my $ua = LWP::UserAgent->new;
   my $response = $ua->get($url); 
@@ -542,9 +512,19 @@ sub get_metadata_response_from_ena_warehouse_rest_call {
   my @lines = split(/\n/, $response_string);
   my $metadata_keys_line =  $lines[0];
   my $metadata_values_line =  $lines[1];
+
+  if(!$metadata_values_line){
+    print STDERR "\nmetadata values are empty for url: $url\n\n";
+    return 0;
+  }
+  
+  if($metadata_keys_line =~ /^ *$/){
+    print STDERR "metadata keys are empty for url: $url\n\n";
+    return 0;
+  }
   
   my @metadata_keys = split(/\t/, $metadata_keys_line);
-  my @metadata_values = split(/\t/, $metadata_values_line);
+  my @metadata_values = split(/\t/, $metadata_values_line); # here i get error
 
   my $index = 0;
 
@@ -577,17 +557,4 @@ sub give_title_from_ena {
   }
 
   return $title;
-}
-
-sub change_date {
-
- my $date = shift;
-
- if($date =~/(jan|January|Jan|feb|Feb|February|mar|March|Mar|apr|Apr|April|may|May|jun|Jun|June|jul|Jul|July|aug|Aug|August|sept|Sept|September|oct|Oct|October|nov|Nov|November|dec|Dec|December)/){
-   my $month = $1;
-   my $correct_month = $months{$month};
-   $date =~ s/$month/$correct_month/;
- }
- return $date;
-
 }

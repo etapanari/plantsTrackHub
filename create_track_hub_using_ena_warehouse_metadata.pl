@@ -106,7 +106,7 @@ if($ls_output=~/$study_id/){ # if the study id folder exists, i remove it and th
 
   `rm -r $ftp_dir_full_path/$study_id` ;
 
-  if($? !=0){ # if ls is successful, it returns 0
+  if($? !=0){ # if rm is successful, it returns 0
  
   die "I cannot rm $ftp_dir_full_path/$study_id  in script: ".__FILE__." line: ".__LINE__."\n";
 
@@ -207,7 +207,6 @@ if ($@) {
   die "I cannot get study title from call strudy->title from Dan's module for study $study_id\n";
 }else{
 
-  print $fh $study->accession."\n";
   my $long_label = "longLabel ".$study->title." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study->accession."\">".$study->accession."</a>"."\n";
 
   utf8::encode($long_label) ; # i do this as from ENA there are some funny data like library names in the long label of the study and perl thinks it's non-ASCii character, while they are not.

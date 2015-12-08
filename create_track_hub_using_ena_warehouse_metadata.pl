@@ -20,7 +20,7 @@ use TransformDate;
 my $study_id ;
 my $ftp_dir_full_path ;   #you put here the path to your local dir where the files of the track hub are stored "/homes/tapanari/public_html/data/test"; # from /homes/tapanari/public_html there is a link to the /nfs/panda/ensemblgenomes/data/tapanari
 my $url_root ;  # you put here your username's URL   ie: "http://www.ebi.ac.uk/~tapanari/data/test";
-   
+
 
 GetOptions(
   "study_id=s" => \$study_id ,
@@ -261,6 +261,8 @@ my $metadata_found_flag=1;
     
 my $meta_keys = get_all_sample_keys();
 
+my $meta_counter = 0;
+
 foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of the study (if there is more than 1 assembly for a given study), I create a trackDb.txt file
 
   $assembly_name = getRightAssemblyName($assembly_name);
@@ -300,7 +302,8 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
 
     if (get_metadata_response_from_ena_warehouse_rest_call (create_url_for_call_sample_metadata($sample_id,$meta_keys)) ==0){
 
-      print STDERR "No metadata values found for sample $sample_id of study $study_id\n";
+      $meta_counter++;
+      print STDERR "$meta_counter. No metadata values found for sample $sample_id of study $study_id\n";
       $metadata_found_flag=0;
 
     }else{  # if there is metadata
@@ -399,7 +402,7 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
   }else{
 
     my ($status, $reason) = ($response->{status}, $response->{reason}); #LWP perl library for dealing with http
-    print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ."Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
+    print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ." Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
     return 0;
   }
 
@@ -501,25 +504,94 @@ sub create_url_for_call_sample_metadata { # i am calling this method for a sampl
 
 }
 
-sub get_metadata_response_from_ena_warehouse_rest_call {  # returns a hash ref if successful, or 0 if not successful
+# sub get_metadata_response_from_ena_warehouse_rest_call {  # returns a hash ref if successful, or 0 if not successful -- this is very slow!!!
+# 
+#   my $url =  shift;
+#   my %metadata_key_value_pairs;
+#   my $ua = LWP::UserAgent->new;
+#   my $response = $ua->get($url); 
+# 
+#   my $response_string = $response->decoded_content;
+#   my @lines = split(/\n/, $response_string);
+#   my $metadata_keys_line =  $lines[0];
+#   my $metadata_values_line =  $lines[1];
+# 
+#   if(!$metadata_values_line){
+#     print STDERR "\nmetadata values are empty for url: $url\n\n";
+#     return 0;
+#   }
+#   
+#   if($metadata_keys_line =~ /^ *$/){
+#     print STDERR "metadata keys are empty for url: $url\n\n";
+#     return 0;
+#   }
+#   
+#   my @metadata_keys = split(/\t/, $metadata_keys_line);
+#   my @metadata_values = split(/\t/, $metadata_values_line); # here i get error
+# 
+#   my $index = 0;
+# 
+#   foreach my $metadata_key (@metadata_keys){
+#     if(!$metadata_values [$index] or $metadata_values [$index] =~/^ *$/) {
+#       $index++;
+#       next;
+# 
+#     }else{
+#       $metadata_key_value_pairs{$metadata_key} = $metadata_values [$index];
+#     }
+#     $index++;
+# 
+#   }
+#   return \%metadata_key_value_pairs ;
+# 
+# }
+
+sub get_metadata_response_from_ena_warehouse_rest_call {  # returns a hash ref if successful, or 0 if not successful -- this is very slow!!!
 
   my $url =  shift;
   my %metadata_key_value_pairs;
   my $ua = LWP::UserAgent->new;
   my $response = $ua->get($url); 
 
+  my $response_code= $response->code;
+  if($response_code != 200){ 
+
+  print "Couldn't get metadata for $url with the first attempt, retrying..\n" ;
+
+  my $flag_success=0;
+
+  for(my $i=1; $i<=10; $i++) {
+
+    print $i .".Retrying attempt: Retrying after 5s...\n";
+    sleep 5;
+    $response = $ua->get($url);
+    $response_code= $response->code;
+    if($response_code == 200){
+      $flag_success =1 ;
+      print "Got metadata after all!\n";
+      last;
+    }
+
+  }
+
+  if($flag_success ==0){
+     
+    print STDERR "Didn't find metadata for url $url"."\t".$response->code."\t". $response->content."\n\n";
+  }
+
+  }
   my $response_string = $response->decoded_content;
   my @lines = split(/\n/, $response_string);
   my $metadata_keys_line =  $lines[0];
   my $metadata_values_line =  $lines[1];
 
   if(!$metadata_values_line){
-    print STDERR "\nmetadata values are empty for url: $url\n\n";
+    print STDERR "\n response code: ".$response_code." Metadata values are empty for url: $url\n\n";
     return 0;
   }
   
   if($metadata_keys_line =~ /^ *$/){
-    print STDERR "metadata keys are empty for url: $url\n\n";
+    print STDERR "\n response code: ".$response_code." Metadata keys are empty for url: $url\n\n";
     return 0;
   }
   

@@ -7,7 +7,9 @@
 
 # example run:
 # perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /homes/tapanari/public_html/data/test2  -http_url http://www.ebi.ac.uk/~tapanari/data/test2 > output
-# perl track_hub_creation_and_registration_pipeline.pl -username tapanari -password testing -local_ftp_dir_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs  -http_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs 1> output 2>errors
+# perl track_hub_creation_and_registration_pipeline.pl -username tapanari2 -password testing2 -local_ftp_dir_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/ena_warehouse_meta  -http_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/ena_warehouse_meta 1> output 2>errors
+
+# third Registry account for testing: username: tapanari2 , password : testing2
 
 use strict ;
 use warnings;
@@ -59,6 +61,7 @@ if($from_scratch){
 if($use_ena_warehouse_meta){
   print " -use_ena_warehouse_metadata";
 }
+
 print "\n";
 
 print "\n* I am using this ftp server to eventually build my track hubs:\n\n $http_url\n\n";
@@ -66,22 +69,23 @@ print "* I am using this Registry account:\n\n user:$registry_user_name \n passw
 
 $| = 1;  # it flashes the output
 
-my $all_track_hubs_in_registry_after_update_before_running_pipeline = give_all_Registered_track_hubs();
+my %studies_last_run_of_pipeline = %{give_all_Registered_track_hubs()};
 my %distinct_runs_before_running_pipeline;
 
-foreach my $hub_name (keys %{$all_track_hubs_in_registry_after_update_before_running_pipeline}){
+foreach my $hub_name (keys %studies_last_run_of_pipeline){
   
   map { $distinct_runs_before_running_pipeline{$_}++ } keys %{give_all_runs_of_study_from_Registry($hub_name)};
 }
 
-print "\n*Before starting running the updates, there were in total ". scalar (keys %{$all_track_hubs_in_registry_after_update_before_running_pipeline}). " track hubs with total ".scalar (keys %distinct_runs_before_running_pipeline)." runs registered in the Track Hub Registry\n";
+print "\n*Before starting running the updates, there were in total ". scalar (keys %studies_last_run_of_pipeline). " track hubs with total ".scalar (keys %distinct_runs_before_running_pipeline)." runs registered in the Track Hub Registry under this account.\n";
 
 $| = 1;  # it flashes the output
 
 if (! -d $ftp_local_path) {
-  print "This directory: $ftp_local_path does not exist, I will make it now\n";
+  print "\nThis directory: $ftp_local_path does not exist, I will make it now.\n";
   `mkdir $ftp_local_path`;
 }
+
 my @study_ids_not_yet_in_ena;
 
 if ($from_scratch){
@@ -89,6 +93,11 @@ if ($from_scratch){
   print "\n ******** deleting all track hubs registered in the Registry under my account\n\n";  
   my $delete_script_output = `perl delete_registered_trackhubs.pl -username $registry_user_name -password $registry_pwd -study_id all`  ; 
   print $delete_script_output;
+
+  if(scalar keys (%studies_last_run_of_pipeline) ==0){
+
+    print "there were no track hubs registered \n";
+  }
 
   $| = 1;  # it flashes the output
 
@@ -196,7 +205,6 @@ foreach my $ens_plant (keys %ens_plant_names) { # i loop through the ensembl pla
 
 my %studyId_date;
  
- 
 foreach my $study_id (keys %studyId_lastProcessedDates ){  
 #each study has more than 1 processed date, as there are usually multiple runs in each study with different processed date each. I want to get the most current date
 
@@ -215,7 +223,6 @@ foreach my $study_id (keys %studyId_lastProcessedDates ){
 }
 
 my $line_counter = 0;
-my %studies_last_run_of_pipeline;
 my %obsolete_studies;
 my %common_studies;
 my %common_updated_studies;
@@ -257,7 +264,7 @@ if($from_scratch) {
 
 }else{ # incremental update
   
-  %studies_last_run_of_pipeline= %{give_all_Registered_track_hubs()};
+  #%studies_last_run_of_pipeline= %{give_all_Registered_track_hubs()};
 
   foreach my $study_id (keys %current_studies){ # current studies from Robert that are completed
 
@@ -278,7 +285,7 @@ if($from_scratch) {
 
   if(scalar (keys %obsolete_studies) >0){
 
-    print "**********starting to delete obsolete track hubs from the trackHub Registry and the server:\n\n";
+    print "\n**********starting to delete obsolete track hubs from the trackHub Registry and the server:\n\n";
 
   }else{
     print "\nThere are not any obsolete track hubs to be removed since the last time the pipeline was run.\n\n";
@@ -319,8 +326,8 @@ if($from_scratch) {
       my %runs_in_Registry = %{give_all_runs_of_study_from_Registry($common_study)};
       my %runs_in_Array_Express = %{$study_Id_runId {$common_study}} ;  #    $study_Id_runId { $hash{"STUDY_ID"} } { $hash{"RUN_ID"} } = 1;
       my @runs_numbers_holder;
-      $runs_numbers_holder[1]= scalar (keys %runs_in_Registry);
-      $runs_numbers_holder[2]= scalar (keys %runs_in_Array_Express);
+      $runs_numbers_holder[1]= scalar (keys %runs_in_Registry); # in cell 1 of this table it's stored the number of runs of the common study in the Registry
+      $runs_numbers_holder[2]= scalar (keys %runs_in_Array_Express);  # in cell 2 of this table it's stored the number of runs of the common study in current Array Express API call
 
       my $are_runs_the_same = hash_keys_are_equal(\%runs_in_Registry,\%runs_in_Array_Express); # returns 0 id they are not equal, 1 if they are
         
@@ -350,7 +357,6 @@ my %studies_to_be_re_made = (%common_updated_studies , %new_studies);
 
 if(scalar keys %studies_to_be_re_made !=0){
 
-
   print "\n ******** starting to make directories and files for the track hubs in the ftp server that are new/updated: $http_url\n\n";
   $line_counter = 0;
 
@@ -361,7 +367,7 @@ if(scalar keys %studies_to_be_re_made !=0){
     if ($new_studies{$study_id}){
       print " (new study)";
     }
-    if (ref($studies_to_be_re_made{$study_id}) eq 'ARRAY' ){
+    if (ref($studies_to_be_re_made{$study_id}) eq 'ARRAY' ){  # if the hash value is a ref to an array
       
       my @table_content = @{$studies_to_be_re_made{$study_id}};
 
@@ -579,14 +585,16 @@ foreach my $hub_name (keys %{$all_track_hubs_in_registry_after_update}){
 
 print "There in total ". scalar (keys %{$all_track_hubs_in_registry_after_update}). " track hubs with total ".scalar (keys %distinct_runs)." runs registered in the Track Hub Registry\n\n";
 
-print "These studies were ready by Array Express but not yet in ENA , so no trak hubs were able to be created out of those, since the metadata needed for the track hubs are taken from ENA:\n";
-my $count_unready_studies=0;
-foreach my $study_id (@study_ids_not_yet_in_ena){
-  $count_unready_studies++;
-  my %runs_hash = %{$study_Id_runId{$study_id}};
-  print $count_unready_studies.".".$study_id." (".scalar (keys %runs_hash)." runs)\n";
-}
 
+if (scalar @study_ids_not_yet_in_ena > 0){
+  print "These studies were ready by Array Express but not yet in ENA , so no trak hubs were able to be created out of those, since the metadata needed for the track hubs are taken from ENA:\n";
+  my $count_unready_studies=0;
+  foreach my $study_id (@study_ids_not_yet_in_ena){
+    $count_unready_studies++;
+    my %runs_hash = %{$study_Id_runId{$study_id}};
+    print $count_unready_studies.".".$study_id." (".scalar (keys %runs_hash)." runs)\n";
+  }
+}
 
 #printf ("Total time to run : %d\n", time() - $start_time);
 

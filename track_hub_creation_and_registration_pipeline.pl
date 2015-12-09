@@ -432,7 +432,7 @@ if(scalar keys %studies_to_be_re_made !=0){
       if($? !=0){ # if rm is successful, it returns 0 
         die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
       }
-      delete $studies_to_be_re_made{$study_id};
+      delete $studies_to_be_re_made{$study_id}; # i remove this study from this hash, so it won't be registered in the Registry
     }
   }
 #if($from_scratch){

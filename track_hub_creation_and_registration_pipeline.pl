@@ -24,6 +24,7 @@ use LWP::UserAgent;
 use HTTP::Request::Common;
 use Time::Piece;
 
+
 my $registry_user_name ;
 my $registry_pwd ;
 my $ftp_local_path ; # ie. ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs
@@ -227,6 +228,7 @@ my %obsolete_studies;
 my %common_studies;
 my %common_updated_studies;
 my %new_studies;
+my @skipped_studies_due_to_registry_issues;
 
 if($from_scratch) {
 
@@ -252,8 +254,22 @@ if($from_scratch) {
       if($? !=0){ # if rm is successful, it returns 0 
         die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
       }
-     }
+    }else{  # if the study is successfully created in the ftp server, I go ahead and register it
 
+      my $output = register_study($study_id);
+
+      if($output !~ /is Registered/){# if something went wrong with the registration, i will not make a track hub out of this study
+        `rm -r $ftp_local_path/$study_id`;
+        if($? !=0){ # if rm is successful, it returns 0 
+          die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+        }
+        $line_counter --;
+        print "		..Something went wrong with the Registration process -- this study will be skipped..\n";
+        push(@skipped_studies_due_to_registry_issues,$study_id);
+      }
+      print $output;
+      
+    }
   }
 
   my $date_string2 = localtime();
@@ -262,9 +278,7 @@ if($from_scratch) {
 
   print "\n***********************************\n\n";
 
-}else{ # incremental update
-  
-  #%studies_last_run_of_pipeline= %{give_all_Registered_track_hubs()};
+}else{ # incremental update  -- here i decide which studies are new / to-be updated / obsolete
 
   foreach my $study_id (keys %current_studies){ # current studies from Robert that are completed
 
@@ -396,24 +410,38 @@ if(scalar keys %studies_to_be_re_made !=0){
     }
     print "\t";
 
-    my $ls_output = `ls $ftp_local_path`  ;
+#     my $ls_output = `ls $ftp_local_path`  ;
+# 
+#     if($? !=0){ # if ls is successful, it returns 0
+#  
+#       die "I cannot ls $ftp_local_path in script: ".__FILE__." line: ".__LINE__."\n";
+# 
+#     }
+# 
+#     my $dir_name_old = $study_id ."_old";
+# 
+#     if($ls_output=~/$study_id/){ # if it's not a new study it will be in the ftp server, so I have to check
+# 
+#       `mv $ftp_local_path/$study_id $ftp_local_path/$dir_name_old`; # first rename it in the server for security- in case smt goes wrong , I don't want to lose it
+# 
+#       if($? !=0){ # if mv is successful, it returns 0
+#  
+#         die "I cannot mv dir $ftp_local_path/$study_id to $study_id $ftp_local_path/$dir_name in script: ".__FILE__." line: ".__LINE__."\n";
+# 
+#       }
+#     }          
 
-    if($? !=0){ # if ls is successful, it returns 0
+    my $dir_name_old = $study_id ."_old";
+    if(!$new_studies{$study_id})   { # if it's a common study for update:
+
+      `mv $ftp_local_path/$study_id $ftp_local_path/$dir_name_old`; # first rename it in the server for security- in case smt goes wrong , I don't want to lose it
+
+      if($? !=0){ # if mv is successful, it returns 0
  
-      die "I cannot ls $ftp_local_path in script: ".__FILE__." line: ".__LINE__."\n";
-
-    }
-
-    if($ls_output=~/$study_id/){ # if it's not a new study it will be in the ftp server, so I have to check
-
-      `rm -r $ftp_local_path/$study_id`; # i first remove it from the server to re-do it
-
-      if($? !=0){ # if rm is successful, it returns 0
- 
-        die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+        die "I cannot mv dir $ftp_local_path/$study_id to $study_id $ftp_local_path/$dir_name_old in script: ".__FILE__." line: ".__LINE__."\n";
 
       }
-    }             
+    }
     my $output_script   ;
     if ( $use_ena_warehouse_meta) {
 
@@ -423,111 +451,82 @@ if(scalar keys %studies_to_be_re_made !=0){
       $output_script = `perl create_track_hub.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
     }
     print $output_script;
+
     if($output_script !~ /..Done/){  # if for some reason the track hub didn't manage to be made in the server, it shouldn't be registered in the Registry, for example Robert gives me a study id as completed that is not yet in ENA
-      print STDERR "Track hub of $study_id could not be made in the server - I have deleted the folder $study_id\n\n" ;
+
+      my $ls_output2 = `ls $ftp_local_path`  ;
+
+      if($? !=0){ # if ls is successful, it returns 0
+ 
+        die "I cannot ls $ftp_local_path in script: ".__FILE__." line: ".__LINE__."\n";
+
+      }
+
       `rm -r $ftp_local_path/$study_id`;
+      if($? !=0){ # if rm is successful, it returns 0
+ 
+        die "I cannot rm $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+
+      }
+
+      if($ls_output2 =~/$dir_name_old/){
+
+        `mv $ftp_local_path/dir_name_old $ftp_local_path/$study_id`; # if smt goes wrong when trying to update a track hub , I put it back to its previous state        
+        print STDERR "Track hub of $study_id could not be updated in the server - I have left it to its previous state $study_id\n\n" ;
+
+      } 
+      if($new_studies{$study_id}){  # if it's a new study that didn't go well
+         print STDERR "Track hub of $study_id could not be made in the server - I have deleted the folder $study_id\n\n" ;
+      }
+      
       $line_counter --;
       push (@study_ids_not_yet_in_ena, $study_id);
 
-      if($? !=0){ # if rm is successful, it returns 0 
-        die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
-      }
-      delete $studies_to_be_re_made{$study_id}; # i remove this study from this hash, so it won't be registered in the Registry
+      next; # i go to the next study, since I don't want to register the study that failed to be created in the ftp server
+
     }
+
+  ##### Registration part
+
+    my $output = register_study($study_id);
+
+    if($output !~ /is Registered/){# if something went wrong with the registration, i will not make a track hub out of this study if it's a new study and I will leave the updated study to its previous status
+      if ($new_studies{$study_id}){
+        `rm -r $ftp_local_path/$study_id`;
+        if($? !=0){ # if rm is successful, it returns 0 
+          die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+        }
+      }else{ # if there is a common to-be updated study, and smt went wrong with the Registry, I put it back in the server in its previous status
+        `rm $ftp_local_path/$dir_name_old` ;
+        if($? !=0){ # if rm is successful, it returns 0
+ 
+          die "I cannot rm $ftp_local_path/$dir_name_old in script: ".__FILE__." line: ".__LINE__."\n";
+
+        }
+        `mv $ftp_local_path/dir_name_old $ftp_local_path/$study_id`; # if smt goes wrong when trying to update a track hub , I put it back to its previous state        
+        print STDERR "Track hub of $study_id could not be updated in the server - I have left it to its previous state $study_id\n\n" ;
+      }
+
+      $line_counter --;
+      print "	..Something went wrong with the Registration process -- this study will be skipped..\n";
+      push(@skipped_studies_due_to_registry_issues,$study_id);
+    }
+    print $output;
+
+  #####
   }
-#if($from_scratch){
+
 my $date_string2 = localtime();
 print " \n Finished creating the files,directories of the track hubs on the server on:\n";
 print "Local date,time: $date_string2\n";
-#}
 print "\n***********************************\n\n";
+
 }else{
   if(!$from_scratch){
     print "\nThere are not any updated or new tracks to be made since the last time the pipeline was run.\n";
   }
 } 
 
-my $line_counter2 = 0;
-
-my %studies_to_register;
-
-if(!$from_scratch){
- 
-  %studies_to_register= %studies_to_be_re_made ;
-
-}else{
-  
-  %studies_to_register = %studyId_assemblyName ;
-  foreach my $study_id (@study_ids_not_yet_in_ena) {
-    delete $studies_to_register{$study_id};
-  }
-}
-
-foreach my $study_id (keys %studies_to_register){ 
-
-  my $hub_txt_url = $http_url . "/" . $study_id . "/hub.txt" ;
-           
-  my @assembly_names_with_accessions;
-      
-  foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data , get runs by organism REST call                           
-         
-    $assembly_name = getRightAssemblyName($assembly_name); # as Robert gets the assembly.default that due to our bug could be the assembly.accession rather than the assembly.name
-
-    if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
-
-      print STDERR "ERROR: study $study_id will not be Registered as there is no assembly name \'$assembly_name\' (Robert's call) of study $study_id in my hash from ensemblgenomes REST call: $ens_genomes_plants_rest_call \n\n";
-      next;  # this is for potato (solanum_tuberosum that has an invalid assembly.default name)
-    }
-    push ( @assembly_names_with_accessions, $assembly_name) ; # this array has only the assembly names that have assembly accessions
-
-  }
-
-  my @array_string_pairs;
-
-  foreach my $assembly_name ( @assembly_names_with_accessions ){
-
-    my $string =  $assembly_name.",".$assName_assAccession{$assembly_name} ;
-    push (@array_string_pairs , $string);
-
-  }
-
-  my $assemblyNames_assemblyAccesions_string;
-
-  if (scalar @array_string_pairs >=1 ){
-
-    $assemblyNames_assemblyAccesions_string=$array_string_pairs[0];
-
-  } else{
-          
-    $assemblyNames_assemblyAccesions_string="empty";
-  }
-
-  if (scalar @array_string_pairs > 1){
-
-    $assemblyNames_assemblyAccesions_string=$array_string_pairs[0].",";
-
-    for(my $index=1; $index< scalar @array_string_pairs; $index++){
-
-      $assemblyNames_assemblyAccesions_string=$assemblyNames_assemblyAccesions_string.$array_string_pairs[$index];
-
-      if ($index < scalar @array_string_pairs -1){
-
-        $assemblyNames_assemblyAccesions_string = $assemblyNames_assemblyAccesions_string .",";
-      }
-               
-    }
-  }
- 
-  my $output = `perl register_track_hub.pl -username $registry_user_name -password $registry_pwd -hub_txt_file_location $hub_txt_url -assembly_name_accession_pairs $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
-  if($output =~ /is Registered/){
-
-    $line_counter2 ++;
-    print $line_counter2.". ";
-  }
-
-  print $output;
-
-} #************************************************************************************
 
 my $dt = DateTime->today;
 
@@ -596,7 +595,17 @@ if (scalar @study_ids_not_yet_in_ena > 0){
   }
 }
 
-#printf ("Total time to run : %d\n", time() - $start_time);
+
+if (scalar @skipped_studies_due_to_registry_issues > 0){
+  print "These studies were not able to be registered in the Track Hub Registry , hence skipped (removed from the ftp server too):\n";
+  my $count_skipped_studies=0;
+  foreach my $study_id (@skipped_studies_due_to_registry_issues){
+    $count_skipped_studies++;
+    my %runs_hash = %{$study_Id_runId{$study_id}};
+    print $count_skipped_studies.".".$study_id." (".scalar (keys %runs_hash)." runs)\n";
+  }
+}
+
 
 ### methods used 
 
@@ -617,7 +626,7 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
   }else{
 
     my ($status, $reason) = ($response->{status}, $response->{reason}); 
-    print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ."Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
+    print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ." Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
     return 0;
   }
 }
@@ -940,3 +949,64 @@ sub hash_keys_are_equal{
   return $areEqual;
 }
 
+
+sub register_study {
+
+  my $study_id = shift;
+
+  my $hub_txt_url = $http_url . "/" . $study_id . "/hub.txt" ;
+           
+  my @assembly_names_with_accessions;
+      
+  foreach my $assembly_name ( keys % {$studyId_assemblyName{$study_id}}) {   # from Robert's data , get runs by organism REST call                           
+         
+    $assembly_name = getRightAssemblyName($assembly_name); # as Robert gets the assembly.default that due to our bug could be the assembly.accession rather than the assembly.name
+
+    if(!$assName_assAccession{$assembly_name}){ # from ensemblgenomes data
+
+      print STDERR "ERROR: study $study_id will not be Registered as there is no assembly name \'$assembly_name\' (Robert's call) of study $study_id in my hash from ensemblgenomes REST call: $ens_genomes_plants_rest_call \n\n";
+      next;  # this is for potato (solanum_tuberosum that has an invalid assembly.default name)
+    }
+    push ( @assembly_names_with_accessions, $assembly_name) ; # this array has only the assembly names that have assembly accessions
+
+  }
+
+  my @array_string_pairs;
+
+  foreach my $assembly_name ( @assembly_names_with_accessions ){
+
+    my $string =  $assembly_name.",".$assName_assAccession{$assembly_name} ;
+    push (@array_string_pairs , $string);
+
+  }
+
+  my $assemblyNames_assemblyAccesions_string;
+
+  if (scalar @array_string_pairs >=1 ){
+
+    $assemblyNames_assemblyAccesions_string=$array_string_pairs[0];
+
+  } else{
+          
+    $assemblyNames_assemblyAccesions_string="empty";
+  }
+
+  if (scalar @array_string_pairs > 1){
+
+    $assemblyNames_assemblyAccesions_string=$array_string_pairs[0].",";
+
+    for(my $index=1; $index< scalar @array_string_pairs; $index++){
+
+      $assemblyNames_assemblyAccesions_string=$assemblyNames_assemblyAccesions_string.$array_string_pairs[$index];
+
+      if ($index < scalar @array_string_pairs -1){
+
+        $assemblyNames_assemblyAccesions_string = $assemblyNames_assemblyAccesions_string .",";
+      }
+               
+    }
+  }
+ 
+  my $output = `perl register_track_hub.pl -username $registry_user_name -password $registry_pwd -hub_txt_file_location $hub_txt_url -assembly_name_accession_pairs $assemblyNames_assemblyAccesions_string` ;  # here I register every track hub in the Registry*********************
+  return $output;
+}

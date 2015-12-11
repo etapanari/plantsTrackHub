@@ -287,7 +287,7 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
     print $fh "superTrack on show\n";
     print $fh "shortLabel ENA_sample:".$sample_id."\n";
     my $longLabel_sample;
-    if(give_title_from_ena($sample_id)) {  # there are cases where the sample doesnt have title ie : SRP023101 and SRP026160 don't have sample title
+    if(give_title_from_ena($sample_id) and give_title_from_ena($sample_id) !~/^ *$/) {  # there are cases where the sample doesnt have title ie : SRP023101 and SRP026160 don't have sample title
       $longLabel_sample = "longLabel ".give_title_from_ena($sample_id)."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
     }else{
       $longLabel_sample = "longLabel "."ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
@@ -351,7 +351,7 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
       my $ena_title = give_title_from_ena($run_id);
       if(!$ena_title){
         print STDERR "run id $run_id was not found to have a title in ENA\n";
-        $long_label_ENA = "	longLabel "."ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run_id."\">".$run_id."</a>"."\n" ;
+        $long_label_ENA = "	longLabel ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run_id."\">".$run_id."</a>\n" ;
       }else{
         $long_label_ENA = "	longLabel ".$ena_title."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$run_id."\">".$run_id."</a>"."\n" ;
       }
@@ -367,7 +367,6 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
   } # end of for each sample
 
 }
-
 
 
 
@@ -553,33 +552,36 @@ sub get_metadata_response_from_ena_warehouse_rest_call {  # returns a hash ref i
   my $response = $ua->get($url); 
 
   my $response_code= $response->code;
-  if($response_code != 200){ 
+  my $response_string = $response->decoded_content;
 
-  print "Couldn't get metadata for $url with the first attempt, retrying..\n" ;
+  if($response_code != 200 or $response_string =~ /^ *$/){ 
 
-  my $flag_success=0;
+    print "Couldn't get metadata for $url with the first attempt, retrying..\n" ;
 
-  for(my $i=1; $i<=10; $i++) {
+    my $flag_success=0;
 
-    print $i .".Retrying attempt: Retrying after 5s...\n";
-    sleep 5;
-    $response = $ua->get($url);
-    $response_code= $response->code;
-    if($response_code == 200){
-      $flag_success =1 ;
-      print "Got metadata after all!\n";
-      last;
+    for(my $i=1; $i<=10; $i++) {
+
+      print $i .".Retrying attempt: Retrying after 5s...\n";
+      sleep 5;
+      $response = $ua->get($url);
+      $response_code= $response->code;
+      if($response_code == 200){
+        $flag_success =1 ;
+        print "Got metadata after all!\n";
+        last;
+      }
+
+    }
+
+    if($flag_success ==0 or $response_string =~ /^ *$/){
+     
+      print STDERR "Didn't find metadata for url $url"."\t".$response->code."\n\n";
+      return 0;
     }
 
   }
 
-  if($flag_success ==0){
-     
-    print STDERR "Didn't find metadata for url $url"."\t".$response->code."\t". $response->content."\n\n";
-  }
-
-  }
-  my $response_string = $response->decoded_content;
   my @lines = split(/\n/, $response_string);
   my $metadata_keys_line =  $lines[0];
   my $metadata_values_line =  $lines[1];

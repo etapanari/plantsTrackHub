@@ -50,9 +50,10 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
   }else{
 
     my ($status, $reason) = ($response->{status}, $response->{reason}); #LWP perl library for dealing with http
-    print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ."Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
+    print STDERR "ERROR in: ".__FILE__." line: ".__LINE__ ." Failed for $url! Status code: ${status}. Reason: ${reason}\n";  # if response is successful I get status "200", reason "OK"
     return 0;
   }
 
 }
 
+1

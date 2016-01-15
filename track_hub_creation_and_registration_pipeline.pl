@@ -137,6 +137,7 @@ my $ens_genomes_plants_rest_call = "http://rest.ensemblgenomes.org/info/genomes/
 
 my @array_response_plants_assemblies = @{getJsonResponse($ens_genomes_plants_rest_call)};  
 
+
 my %assName_assAccession;
 my %assAccession_assName;
 my %ens_plant_names;
@@ -614,7 +615,15 @@ sub getJsonResponse { # it returns the json response given the url-endpoint as p
 
   my $url = shift; 
 
+  my $response_http = eval {$http->get($url)} ;
+
+  if ($@) {
+    print STDERR "\nCould not get response from REST call of url $url\n";
+    return 0;
+  }
+
   my $response = $http->get($url); 
+
 
   if($response->{success} ==1) { # if the response is successful then I get 1
 

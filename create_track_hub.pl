@@ -311,15 +311,15 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
     }
     print $fh "\n\n";
 ## end of the sample super track
-    my @experiments =@{$sample->experiments()};
+    #my @experiments =@{$sample->experiments()};
 
-    foreach my $experiment (@experiments){  # each sample can have 1,2 or more experiments ; most have 1 or 2 but some can have more than 100
+    #foreach my $experiment (@experiments){  # each sample can have 1,2 or more experiments ; most have 1 or 2 but some can have more than 100
 
-      my @runs= @{$experiment->runs()}; # each experiment can have 1, 2 or more runs ; usually there are 1 or 2 runs per experiment
+      #my @runs= @{$experiment->runs()}; # each experiment can have 1, 2 or more runs ; usually there are 1 or 2 runs per experiment
 
       foreach my $run (@runs){
 
-        if($done_runs {$run->accession()}{$assembly_name}){  # i do this check because i want to print every run once in the trackDb.txt file. see line 224 for comments
+        if($done_runs {$run->accession()}{$assembly_name}){  # i do this check because i want to print every run once in the trackDb.txt file. see line 232 for comments
           next;
         }else{
 
@@ -344,17 +344,13 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
         utf8::encode($long_label_ENA) ;
         print $fh $long_label_ENA;
 
-        print $fh "	type bam\n";
-        #print $fh "	metadata species=$species_name ";
-        #my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;
-
-        #print $fh "hub_created_date=".printlabel($date_string)." ";
+        print $fh "	type cram\n";
 
         print $fh "\n";
 
       } #end of foreach run
 
-    } # end of for each experiment 
+    #} # end of for each experiment 
 
   } # end of for each sample
 

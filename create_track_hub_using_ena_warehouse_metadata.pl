@@ -359,7 +359,7 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
       utf8::encode($long_label_ENA) ;
       print $fh $long_label_ENA;
 
-      print $fh "	type bam\n";
+      print $fh "	type cram\n";
       print $fh "\n";
 
     } #end of foreach run
@@ -390,6 +390,12 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 
   my $response = $http->get($url);
 
+  my $response_http = eval {$http->get($url)} ;
+
+  if ($@) {
+    print STDERR "\nCould not get response from REST call of url $url\n";
+    return 0;
+  }
   if($response->{success} ==1) { # if the response is successful then I get 1
 
     my $content=$response->{content};     
@@ -554,7 +560,12 @@ sub get_metadata_response_from_ena_warehouse_rest_call {  # returns a hash ref i
   my $response_code= $response->code;
   my $response_string = $response->decoded_content;
 
-  if($response_code != 200 or $response_string =~ /^ *$/){ 
+  my @lines = split(/\n/, $response_string);
+  my $metadata_keys_line =  $lines[0];
+  my $metadata_values_line =  $lines[1];
+
+
+  if($response_code != 200 or $response_string =~ /^ *$/ or (!$metadata_values_line) or (!$metadata_keys_line ) ){ 
 
     print "Couldn't get metadata for $url with the first attempt, retrying..\n" ;
 
@@ -582,9 +593,6 @@ sub get_metadata_response_from_ena_warehouse_rest_call {  # returns a hash ref i
 
   }
 
-  my @lines = split(/\n/, $response_string);
-  my $metadata_keys_line =  $lines[0];
-  my $metadata_values_line =  $lines[1];
 
   if(!$metadata_values_line){
     print STDERR "\n response code: ".$response_code." Metadata values are empty for url: $url\n\n";
@@ -607,6 +615,9 @@ sub get_metadata_response_from_ena_warehouse_rest_call {  # returns a hash ref i
       next;
 
     }else{
+      if($metadata_key=~/date/ and $metadata_values [$index]=~/(\d+)-\d+-\d+\/\d+-\d+-\d+/){ # i do this as an exception becuase I had dates like this:  collection_date=2014-01-01/2014-12-31, I want to do it collection_date=2014
+         $metadata_values [$index] = $1;
+      }
       $metadata_key_value_pairs{$metadata_key} = $metadata_values [$index];
     }
     $index++;

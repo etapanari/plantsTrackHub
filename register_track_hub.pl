@@ -13,6 +13,7 @@ use HTTP::Request::Common;
 use LWP::UserAgent;
 use Getopt::Long;
 
+
 my $ua = LWP::UserAgent->new;
 
 # example call:
@@ -39,7 +40,7 @@ my $hub_name = $1;
 my $auth_token = eval { registry_login($server, $username, $pwd) };
 if ($@) {
   print STDERR "Couldn't login, cannot register track hub $hub_name: $@\n";
-  return;
+  die;
 }
 my $url = $server . '/api/trackhub';
 
@@ -64,7 +65,7 @@ my $response_code= $response->code;
 
 if($response_code == 201) {
 
-  print $hub_name ." is Registered\n";
+  print "	..$hub_name is Registered\n";
 
 }elsif($response_code == 503 or $response_code == 500 or $response_code == 400){ #and $response->content=~/server response timed out/)) {
 
@@ -80,7 +81,7 @@ if($response_code == 201) {
     $response_code= $response->code;
     if($response_code == 201){
       $flag_success =1 ;
-      print "$hub_name is Registered\n";
+      print "	..$hub_name is Registered\n";
       last;
     }
 

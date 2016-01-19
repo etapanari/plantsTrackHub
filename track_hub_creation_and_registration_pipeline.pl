@@ -366,7 +366,7 @@ if($from_scratch) {
     } 
   }
    
-} # end of the incremental update  
+} # end of the incremental update   decision of  which studies are new / to-be updated / obsolete
 
 my %studies_to_be_re_made = (%common_updated_studies , %new_studies);
 
@@ -443,8 +443,8 @@ if(scalar keys %studies_to_be_re_made !=0){
 
       }
     }
-    my $output_script   ;
-    if ( $use_ena_warehouse_meta) {
+    my $output_script;
+    if ($use_ena_warehouse_meta) {
 
       $output_script = `perl create_track_hub_using_ena_warehouse_metadata.pl -study_id $study_id -local_ftp_dir_path $ftp_local_path -http_url $http_url` ; # here I create for every study a track hub *********************
 
@@ -484,6 +484,15 @@ if(scalar keys %studies_to_be_re_made !=0){
       push (@study_ids_not_yet_in_ena, $study_id);
 
       next; # i go to the next study, since I don't want to register the study that failed to be created in the ftp server
+
+    }else{  # if things went well, I remove the back up file
+
+      `rm -r $ftp_local_path/$dir_name_old`;
+      if($? !=0){ # if rm is successful, it returns 0
+ 
+        die "I cannot rm $ftp_local_path/$dir_name_old in script: ".__FILE__." line: ".__LINE__."\n";
+
+      }
 
     }
 

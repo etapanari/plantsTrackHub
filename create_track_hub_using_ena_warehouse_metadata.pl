@@ -32,7 +32,7 @@ my $server_array_express =  "http://plantain:3000/eg"; # Robert's server where h
 
 my $http = HTTP::Tiny->new();
 
-my %robert_plant_names = %{ArrayExpress->getPlantNamesArrayExpressAPI()}; 
+my %robert_plant_names = %{ArrayExpress->get_plant_names_AE_API()}; 
 
 my $get_runs_from_study_url= $server_array_express . "/getLibrariesByStudyId/$study_id"; # i get all the runs of the study
     
@@ -92,26 +92,25 @@ foreach my $hash_ref (@array_response_plants_assemblies){
 
 }
 
-
-## Making the assembly directory #############
-my $ls_output = `ls $ftp_dir_full_path`  ;
-
-if($? !=0){ # if ls is successful, it returns 0
- 
-  die "I cannot see contents of $ftp_dir_full_path(ls failed) in script: ".__FILE__." line: ".__LINE__."\n";
-
-}
-
-if($ls_output=~/$study_id/){ # if the study id folder exists, i remove it and then re-do it
-
-  `rm -r $ftp_dir_full_path/$study_id` ;
-
-  if($? !=0){ # if rm is successful, it returns 0
- 
-  die "I cannot rm $ftp_dir_full_path/$study_id  in script: ".__FILE__." line: ".__LINE__."\n";
-
-  }
-}
+## Making the study directory #############
+# my $ls_output = `ls $ftp_dir_full_path`;
+# 
+# if($? !=0){ # if ls is successful, it returns 0
+#  
+#   die "I cannot see contents of $ftp_dir_full_path(ls failed) in script: ".__FILE__." line: ".__LINE__."\n";
+# 
+# }
+# 
+# if($ls_output=~/$study_id/){ # if the study id folder exists, i remove it and then re-do it
+# 
+#   `rm -r $ftp_dir_full_path/$study_id` ;
+# 
+#   if($? !=0){ # if rm is successful, it returns 0
+#  
+#   die "I cannot rm $ftp_dir_full_path/$study_id  in script: ".__FILE__." line: ".__LINE__."\n";
+# 
+#   }
+# }
 
 `mkdir $ftp_dir_full_path/$study_id`;
 
@@ -126,6 +125,8 @@ if($? !=0){ # if mkdir is successful, it returns 0
   $mkdir_flag=1;
 
 }
+
+## Making the assemblies directory #############
 
 my $mkdir_flag2=0;
 
@@ -243,6 +244,7 @@ foreach my $assembly_name (keys %assembly_names){ # I create a stanza for every 
   $assembly_name = getRightAssemblyName($assembly_name);
   print $fh2 "genome ".$assembly_name."\n"; 
   print $fh2 "trackDb ".$assembly_name."/trackDb.txt"."\n\n"; 
+
 }
 
 
@@ -285,7 +287,7 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
 ## print sample super track ##
     print $fh "track ".$sample_id."\n";
     print $fh "superTrack on show\n";
-    print $fh "shortLabel ENA_sample:".$sample_id."\n";
+    print $fh "shortLabel BioSample:".$sample_id."\n";
     my $longLabel_sample;
     if(give_title_from_ena($sample_id) and give_title_from_ena($sample_id) !~/^ *$/) {  # there are cases where the sample doesnt have title ie : SRP023101 and SRP026160 don't have sample title
       $longLabel_sample = "longLabel ".give_title_from_ena($sample_id)."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
@@ -344,7 +346,7 @@ foreach my $assembly_name (keys %assembly_names){ # for every assembly folder of
       print $fh "	track ". $run_id."\n"; 
       print $fh "	parent ". $sample_id."\n"; 
       print $fh "	bigDataUrl $ftp_location \n"; 
-      my $short_label_ENA="	shortLabel ENA_run:".$run_id."\n";
+      my $short_label_ENA="	shortLabel Run:".$run_id."\n";
       print $fh $short_label_ENA;
 
       my $long_label_ENA;

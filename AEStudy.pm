@@ -5,7 +5,7 @@ use warnings;
 use EG;
 use ArrayExpress;
 
-## this is a class object of an AE study. It considers only PLANT species.
+## this is a class of an AE study. It considers only PLANT species.
 
 sub new {
 

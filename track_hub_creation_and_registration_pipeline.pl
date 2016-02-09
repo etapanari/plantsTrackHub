@@ -194,13 +194,13 @@ foreach my $ens_plant (keys %ens_plant_names) { # i loop through the ensembl pla
 
     $robert_plants_done{ $hash{"ORGANISM"} }++; 
     $robert_plant_study {$hash{"ORGANISM"} }  {$hash{"STUDY_ID"}} = 1;
-    $runs {$hash{"RUN_ID"}} = 1;
+    $runs {$hash{"BIOREP_ID"}} = 1;
     $current_studies {$hash {"STUDY_ID"}} = 1 ;
         
     $studyId_assemblyName { $hash {"STUDY_ID"} } { $hash {"ASSEMBLY_USED"} } = 1; # i can have more than one assembly for each study
 
     $studyId_lastProcessedDates { $hash {"STUDY_ID"} } { $hash {"LAST_PROCESSED_DATE"} } =1 ;  # i get different last processed dates from different the runs of the study
-    $study_Id_runId { $hash{"STUDY_ID"} } { $hash{"RUN_ID"} } = 1;
+    $study_Id_runId { $hash{"STUDY_ID"} } { $hash{"BIOREP_ID"} } = 1;
         
   }
 }
@@ -410,28 +410,7 @@ if(scalar keys %studies_to_be_re_made !=0){
       }
     }
     print "\t";
-
-#     my $ls_output = `ls $ftp_local_path`  ;
-# 
-#     if($? !=0){ # if ls is successful, it returns 0
-#  
-#       die "I cannot ls $ftp_local_path in script: ".__FILE__." line: ".__LINE__."\n";
-# 
-#     }
-# 
-#     my $dir_name_old = $study_id ."_old";
-# 
-#     if($ls_output=~/$study_id/){ # if it's not a new study it will be in the ftp server, so I have to check
-# 
-#       `mv $ftp_local_path/$study_id $ftp_local_path/$dir_name_old`; # first rename it in the server for security- in case smt goes wrong , I don't want to lose it
-# 
-#       if($? !=0){ # if mv is successful, it returns 0
-#  
-#         die "I cannot mv dir $ftp_local_path/$study_id to $study_id $ftp_local_path/$dir_name in script: ".__FILE__." line: ".__LINE__."\n";
-# 
-#       }
-#     }          
-
+       
     my $dir_name_old = $study_id ."_old";
     if(!$new_studies{$study_id})   { # if it's a common study for update:
 
@@ -463,21 +442,41 @@ if(scalar keys %studies_to_be_re_made !=0){
 
       }
 
-      `rm -r $ftp_local_path/$study_id`;
-      if($? !=0){ # if rm is successful, it returns 0
- 
-        die "I cannot rm $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
-
-      }
-
-      if($ls_output2 =~/$dir_name_old/){
-
-        `mv $ftp_local_path/dir_name_old $ftp_local_path/$study_id`; # if smt goes wrong when trying to update a track hub , I put it back to its previous state        
-        print STDERR "Track hub of $study_id could not be updated in the server - I have left it to its previous state $study_id\n\n" ;
-
-      } 
       if($new_studies{$study_id}){  # if it's a new study that didn't go well
-         print STDERR "Track hub of $study_id could not be made in the server - I have deleted the folder $study_id\n\n" ;
+
+        if($ls_output2 =~/$study_id/){ # i check if the directory was created
+
+          `rm $ftp_local_path/$study_id`;
+          if($? !=0){ # if mv is successful, it returns 0
+ 
+            die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+
+          }else{
+            print STDERR "Track hub of $study_id could not be made in the server - I have deleted the folder $study_id\n\n" ;
+          }
+        } 
+
+      }else{ # if it's an updated study, with the back-up folder
+
+        if($ls_output2 =~/$dir_name_old/){
+
+          if($ls_output2 =~/$study_id/){ # i check if the directory was created
+            `rm $ftp_local_path/$study_id`;
+            if($? !=0){ # if mv is successful, it returns 0
+ 
+              die "I cannot rm dir $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+
+             }
+           }
+          `mv $ftp_local_path/dir_name_old $ftp_local_path/$study_id`; # if smt goes wrong when trying to update a track hub , I put it back to its previous state        
+          if($? !=0){ # if mv is successful, it returns 0
+ 
+            die "I cannot mv dir $ftp_local_path/dir_name_old to $ftp_local_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+
+          }else{
+            print STDERR "Track hub of $study_id could not be updated in the server - I have left it to its previous state $study_id\n\n" ;
+          }
+        } 
       }
       
       $line_counter --;
@@ -487,13 +486,15 @@ if(scalar keys %studies_to_be_re_made !=0){
 
     }else{  # if things went well, I remove the back up file
 
-      `rm -r $ftp_local_path/$dir_name_old`;
-      if($? !=0){ # if rm is successful, it returns 0
+      if (!$new_studies{$study_id}) {
+
+        `rm -r $ftp_local_path/$dir_name_old`;
+        if($? !=0){ # if rm is successful, it returns 0
  
-        die "I cannot rm $ftp_local_path/$dir_name_old in script: ".__FILE__." line: ".__LINE__."\n";
+          die "I cannot rm $ftp_local_path/$dir_name_old in script: ".__FILE__." line: ".__LINE__."\n";
 
+        }
       }
-
     }
 
   ##### Registration part
@@ -569,7 +570,7 @@ foreach my $plant (keys %robert_plants_done){
 print "\n";
 
 
-print "In total there are " .$counter_ens_plants . " Ensembl plants done to date.\n\n";
+print "In total there are " .$counter_ens_plants . " out of ".scalar (keys %ens_plant_names)." Ensembl plants done to date.\n\n";
 print "####################################################################################\n\n";
 
 my $date_string_end = localtime();

@@ -25,24 +25,23 @@ GetOptions(
 );
 
 
-
 { # main method
 
-  my $study = AEStudy->new($study_id);
+  my $study_obj = AEStudy->new($study_id);
+
+  make_study_dir($server_dir_full_path, $study_obj);
+
+  make_assemblies_dir($server_dir_full_path, $study_obj) ;  
   
-  make_study_dir($server_dir_full_path, $study);
+  make_hubtxt_file($server_dir_full_path , $study_obj);
 
-  make_assemblies_dir($server_dir_full_path, $study) ;  
-  
-  make_hubtxt_file($server_dir_full_path , $study);
+  make_genomestxt_file($server_dir_full_path , $study_obj);  
 
-  make_genomestxt_file($server_dir_full_path , $study);  
-
-  my %assembly_names = %{$study->get_assembly_names};  # is it good practice to loop here or inside the method?
+  my %assembly_names = %{$study_obj->get_assembly_names};  # is it good practice to loop here or inside the method?
 
   foreach my $assembly_name (keys %assembly_names){
 
-    make_trackDbtxt_file($server_dir_full_path, $study, $assembly_name);
+    make_trackDbtxt_file($server_dir_full_path, $study_obj, $assembly_name);
 
   }
 }
@@ -68,22 +67,20 @@ sub run_system_command {
 
 sub make_study_dir{
 
-  my ($server_dir_full_path,$study) = @_;
-
-  my $study_id = $study->id;
+  my ($server_dir_full_path,$study_obj) = @_;
+  my $study_id = $study_obj->id;
 
   if (run_system_command("mkdir $server_dir_full_path/$study_id") == UNSUCCESSFULLY_EXECUTED){
-
     die "I cannot make dir $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
   }
 }
 
 sub make_assemblies_dir{
 
-  my ($server_dir_full_path,$study) = @_;
-  my $study_id = $study->id;
+  my ($server_dir_full_path,$study_obj) = @_;
+  my $study_id = $study_obj->id;
 
-  foreach my $assembly_name (keys %{$study->get_assembly_names}){ # For every assembly I make a directory for the study -track hub
+  foreach my $assembly_name (keys %{$study_obj->get_assembly_names}){ # For every assembly I make a directory for the study -track hub
 
     if (run_system_command("mkdir $server_dir_full_path/$study_id/$assembly_name") == UNSUCCESSFULLY_EXECUTED){
       die "I cannot make directories of assemblies in $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
@@ -93,13 +90,12 @@ sub make_assemblies_dir{
 
 sub make_hubtxt_file{
 
-  my ($server_dir_full_path,$study) = @_;
+  my ($server_dir_full_path,$study_obj) = @_;
 
-  my $study_id = $study->id;
+  my $study_id = $study_obj->id;
   my $hub_txt_file= "$server_dir_full_path/$study_id/hub.txt";
 
   if (run_system_command("touch $hub_txt_file") == UNSUCCESSFULLY_EXECUTED){
-
     die "Could not create hub.txt file in the $server_dir_full_path location\n";
   }
 
@@ -109,30 +105,31 @@ sub make_hubtxt_file{
 
   print $fh "shortLabel "."RNA-seq alignment hub ".$study_id."\n"; 
   
-  my $title= ENA::get_ENA_study_title($study_id)};
- my $long_label;
- 
-  if (!$title) {
-   print "I cannot get study title for $study_id from ENA\n";
-  #$long_lable...
-  }else{
+  my $ena_study_title= ENA::get_ENA_study_title($study_id);
+  my $long_label;
 
-    $long_label = "longLabel ".ENA::get_ENA_study_title($study_id)." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study_id."\">".$study_id."</a>"."\n";
-}
+  if (!$ena_study_title) {
+    print STDERR "I cannot get study title for $study_id from ENA\n";
+    $long_label = $long_label = "longLabel ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study_id."\">".$study_id."</a>"."\n";
+  }else
+  {
+
+    $long_label = "longLabel $ena_study_title ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study_id."\">".$study_id."</a>"."\n";
+
     utf8::encode($long_label) ; # i do this as from ENA there are some funny data like library names in the long label of the study and perl thinks it's non-ASCii character, while they are not.
     print $fh $long_label;
     print $fh "genomesFile genomes.txt\n";
     print $fh "email tapanari\@ebi.ac.uk\n";
 
-  
+  }
 }
 
 sub make_genomestxt_file{
   
-  my ($server_dir_full_path,$study) = @_;
+  my ($server_dir_full_path,$study_obj) = @_;
   
-  my $assembly_names_href = $study->get_assembly_names;
-  my $study_id = $study->id;
+  my $assembly_names = $study_obj->get_assembly_names;
+  my $study_id = $study_obj->id;
 
   my $genomes_txt_file = "$server_dir_full_path/$study_id/genomes.txt";
 
@@ -166,10 +163,10 @@ sub make_trackDbtxt_file{
 # 	longLabel Illumina Genome Analyzer IIx sequencing; Illumina sequencing of cDNAs derived from rice mRNA_Phosphate sufficient_1day_Shoot; ENA link: <a href="http://www.ebi.ac.uk/ena/data/view/DRR000756">DRR000756</a>
 # 	type cram
 
-  my ( $ftp_dir_full_path, $study , $assembly_name) = @_;
+  my ( $ftp_dir_full_path, $study_obj , $assembly_name) = @_;
     
   my $meta_keys = ENA::get_all_sample_keys(); # ref to array
-  my $study_id =$study->id;
+  my $study_id =$study_obj->id;
 
   my $trackDb_txt_file="$ftp_dir_full_path/$study_id/$assembly_name/trackDb.txt";
 
@@ -181,7 +178,7 @@ sub make_trackDbtxt_file{
 
   open(my $fh, '>', $trackDb_txt_file) or die "Error in ".__FILE__." line ".__LINE__." Could not open file '$trackDb_txt_file' $!";
 
-  foreach my $sample_id ( keys %{$study->get_sample_ids} ) { 
+  foreach my $sample_id ( keys %{$study_obj->get_sample_ids} ) { 
 
 ## print sample super track ##
     print $fh "track ".$sample_id."\n";
@@ -221,7 +218,7 @@ sub make_trackDbtxt_file{
         my $meta_value = $metadata_pairs{$meta_key} ;
         utf8::encode($meta_value) ;
 
-        if($meta_key =~/date/ and $meta_value =~/[(a-z)|(A-Z)]/){# if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
+        if($meta_key =~/date/ and $meta_value =~/[(a-z)|(A-Z)]/){ # if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
           $meta_value = TransformDate->change_date($meta_value);
         }
         print $fh printlabel_key($meta_key)."=".printlabel_value($meta_value)." ";
@@ -234,14 +231,14 @@ sub make_trackDbtxt_file{
 ## end of the sample super track
 ## now printing the bioreps of the sample
 
-    foreach my $biorep_id (keys %{$study->get_biorep_ids_from_sample_id($sample_id)}){
+    foreach my $biorep_id (keys %{$study_obj->get_biorep_ids_from_sample_id($sample_id)}){
 
-      my $ae_asssembly_name = $study->get_assembly_name_from_biorep_id($biorep_id) ;
+      my $ae_asssembly_name = $study_obj->get_assembly_name_from_biorep_id($biorep_id) ;
       my $proper_assembly_name= EG::get_right_assembly_name ( $ae_asssembly_name);
 
       next unless ($proper_assembly_name eq $assembly_name ) ;#and print "Something is wrong with the assembly name ; AE gives $ae_assembly_name , then my method in EG:get_right_assembly_name gives $proper_assembly_name while it should be $assembly_name\n";  # just for Q.C.
            
-      my $server_location = $study->get_big_data_file_location_from_biorep_id($biorep_id);
+      my $server_location = $study_obj->get_big_data_file_location_from_biorep_id($biorep_id);
 
       print $fh "	track ". $biorep_id."\n"; 
       print $fh "	parent ". $sample_id."\n"; 
@@ -253,7 +250,7 @@ sub make_trackDbtxt_file{
 
       if($biorep_id =~/biorep/){
 
-        my @runs = @{$study->get_run_ids_of_biorep_id($biorep_id)};
+        my @runs = @{$study_obj->get_run_ids_of_biorep_id($biorep_id)};
 
         if(ENA::get_ENA_sample_or_exp_title ($runs[0])){
           $ena_title = ENA::get_ENA_sample_or_exp_title ($runs[0]);
@@ -295,7 +292,7 @@ sub make_trackDbtxt_file{
       utf8::encode($long_label_ENA) ;
       print $fh $long_label_ENA;
 
-      print $fh "	type ".$study->give_big_data_file_type_of_biorep_id($biorep_id)."\n";
+      print $fh "	type ".$study_obj->give_big_data_file_type_of_biorep_id($biorep_id)."\n";
       print $fh "\n";
 
     } #end of foreach run

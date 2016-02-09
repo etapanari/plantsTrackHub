@@ -1,5 +1,5 @@
 
-#perl create_track_hub_wh_meta_improved.pl -study_id DRP000315 -local_server_dir_path /homes/tapanari -http_url http://www.ebi.ac.uk/~tapanari/data/
+#perl create_track_hub_wh_meta_improved.pl -study_id DRP000315 -local_server_dir_path /homes/tapanari 
 
 use strict ;
 use warnings;

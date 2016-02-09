@@ -17,18 +17,19 @@ use constant {
   UNSUCCESSFULLY_EXECUTED => 0
 };
 
-my ($study_id, $server_dir_full_path, $url_root); 
+my ($study_id, $server_dir_full_path); 
 
 GetOptions(
   "study_id=s" => \$study_id,
-  "local_server_dir_path=s" => \$server_dir_full_path,
-  "http_url=s" => \$url_root
+  "local_server_dir_path=s" => \$server_dir_full_path
 );
 
-my $study = AEStudy->new($study_id);
+
 
 { # main method
 
+  my $study = AEStudy->new($study_id);
+  
   make_study_dir($server_dir_full_path, $study);
 
   make_assemblies_dir($server_dir_full_path, $study) ;  
@@ -108,27 +109,29 @@ sub make_hubtxt_file{
 
   print $fh "shortLabel "."RNA-seq alignment hub ".$study_id."\n"; 
   
-  eval {ENA::get_ENA_study_title($study_id)};
-
-  if ($@) {
+  my $title= ENA::get_ENA_study_title($study_id)};
+ my $long_label;
+ 
+  if (!$title) {
    print "I cannot get study title for $study_id from ENA\n";
+  #$long_lable...
   }else{
 
-    my $long_label = "longLabel ".ENA::get_ENA_study_title($study_id)." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study_id."\">".$study_id."</a>"."\n";
-
+    $long_label = "longLabel ".ENA::get_ENA_study_title($study_id)." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study_id."\">".$study_id."</a>"."\n";
+}
     utf8::encode($long_label) ; # i do this as from ENA there are some funny data like library names in the long label of the study and perl thinks it's non-ASCii character, while they are not.
     print $fh $long_label;
     print $fh "genomesFile genomes.txt\n";
     print $fh "email tapanari\@ebi.ac.uk\n";
 
-  }
+  
 }
 
 sub make_genomestxt_file{
   
   my ($server_dir_full_path,$study) = @_;
   
-  my $assembly_names = $study->get_assembly_names;
+  my $assembly_names_href = $study->get_assembly_names;
   my $study_id = $study->id;
 
   my $genomes_txt_file = "$server_dir_full_path/$study_id/genomes.txt";
@@ -218,7 +221,7 @@ sub make_trackDbtxt_file{
         my $meta_value = $metadata_pairs{$meta_key} ;
         utf8::encode($meta_value) ;
 
-        if($meta_key =~/date/ and $meta_value =~/[(a-z)|(A-Z)]/){ # if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
+        if($meta_key =~/date/ and $meta_value =~/[(a-z)|(A-Z)]/){# if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
           $meta_value = TransformDate->change_date($meta_value);
         }
         print $fh printlabel_key($meta_key)."=".printlabel_value($meta_value)." ";

@@ -2,18 +2,19 @@ package JsonResponse;
 
 use strict ;
 use warnings;
+
 use HTTP::Tiny;
 use JSON;
 
 my $http = HTTP::Tiny->new();
 
-sub getJsonResponse { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
+sub get_Json_response { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
   
-  my $url= shift; # example: "http://plantain:3000/eg/getLibrariesByStudyId/SRP033494";
+  my $url = shift; # example: "http://plantain:3000/eg/getLibrariesByStudyId/SRP033494";
 
   my $response = $http->get($url);
 
-  if($response->{success} ==1) { # if the response is successful then I get 1
+  if($response->{success} ==1) { # if the response is successful then I get 1 # checks the url to be correct and server to give response
 
     my $content=$response->{content};     
     my $json = decode_json($content); # it returns an array reference 
@@ -30,4 +31,4 @@ sub getJsonResponse { # it returns the json response given the endpoint as param
 }
 
 
-1
+1;

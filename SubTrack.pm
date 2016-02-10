@@ -4,7 +4,7 @@ use strict;
 use warnings;
 
 
-## this is a class of all the track data of a track stanza in the trackDb.txt file
+## this is a class of all the sub-track data of a sub-track stanza in the trackDb.txt file
 
 sub new {
 

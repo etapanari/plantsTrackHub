@@ -12,6 +12,7 @@ use TransformDate;
 use ENA;
 use EG;
 use AEStudy;
+use SubTrack;
 
 my ($study_id, $server_dir_full_path); 
 
@@ -78,7 +79,6 @@ sub make_assemblies_dirs{
 
     run_system_command("mkdir $server_dir_full_path/$study_id/$assembly_name")
       or die "I cannot make directories of assemblies in $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
-
   }
 }
 
@@ -142,12 +142,7 @@ sub make_trackDbtxt_file{
 # longLabel Oryza sativa Japonica Group; Total mRNA from shoot of rice (Oryza sativa ssp. Japonica cv. Nipponbare) seedling; ENA link: <a href="http://www.ebi.ac.uk/ena/data/view/SAMD00009891">SAMD00009891</a>
 # metadata hub_created_date="Tue Feb  2 13:25:39 2016 GMT" cultivar=Nipponbare tissue_type=shoot germline=N description="Total mRNA from shoot of rice (Oryza sativa ssp. Japonica cv. Nipponbare) seedling" accession=SAMD00009891 environmental_sample=N scientific_name="Oryza sativa Japonica Group" sample_alias=SAMD00009891 tax_id=39947 center_name=BIOSAMPLE secondary_sample_accession=DRS000420 first_public=2012-01-06 
 # 
-# 	track DRR000756
-# 	parent SAMD00009891
-# 	bigDataUrl http://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000756/DRR000756.cram 
-# 	shortLabel DRR000756
-# 	longLabel Illumina Genome Analyzer IIx sequencing; Illumina sequencing of cDNAs derived from rice mRNA_Phosphate sufficient_1day_Shoot; ENA link: <a href="http://www.ebi.ac.uk/ena/data/view/DRR000756">DRR000756</a>
-# 	type cram
+
 
   my ( $ftp_dir_full_path, $study_obj , $assembly_name) = @_;
     
@@ -220,57 +215,11 @@ sub make_trackDbtxt_file{
 ## now printing the bioreps of the sample
 
     foreach my $biorep_id (keys %{$study_obj->get_biorep_ids_from_sample_id($sample_id)}){
+    
+      my $track_obj=make_biosample_track_obj($study_obj,$biorep_id,$sample_id);
+      print_sub_track_stanza($track_obj, $fh);
 
-      my $ae_asssembly_name = $study_obj->get_assembly_name_from_biorep_id($biorep_id) ;
-
-      my $server_location = $study_obj->get_big_data_file_location_from_biorep_id($biorep_id);
-
-      print $fh "	track ". $biorep_id."\n"; 
-      print $fh "	parent ". $sample_id."\n"; 
-      print $fh "	bigDataUrl $server_location \n"; 
-      print $fh "	shortLabel BioRep:".$biorep_id."\n";
-
-      my $long_label_ENA;
-      my $ena_title = get_ENA_biorep_title($study_obj,$biorep_id);
-
-      if($biorep_id!~/biorep/){
-
-        if(!$ena_title){
-
-          print STDERR "biorep id $biorep_id was not found to have a title in ENA\n";
-          $long_label_ENA = "	longLabel ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>\n" ;
-
-        }else{
-
-          $long_label_ENA = "	longLabel ".$ena_title."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>"."\n" ;
-        }
-
-      }else{ # run id would be "E-MTAB-2037.biorep4"
-       
-        my $biorep_accession;
-
-        if($biorep_id=~/(.+)\.biorep.*/){
-          $biorep_accession = $1;
-        } 
- 
-        if(!$ena_title){
-
-          print STDERR "first run of biorep id $biorep_id was not found to have a title in ENA\n";
-          # i want the link to be like: http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/E-GEOD-55482.bioreps.txt      
-          $long_label_ENA = "	longLabel AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$1.".bioreps.txt"."\">".$biorep_id."</a>\n" ;
-
-        }else{
- 
-          $long_label_ENA = "	longLabel ".$ena_title."; AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$biorep_accession.".bioreps.txt"."\">".$biorep_id."</a>"."\n" ;
-        }
-      }
-      utf8::encode($long_label_ENA);
-      print $fh $long_label_ENA;
-
-      print $fh "	type ".$study_obj->give_big_data_file_type_of_biorep_id($biorep_id)."\n";
-      print $fh "\n";
-
-    } #end of foreach run
+    } #end of foreach biorep
 
   } # end of for each sample
 
@@ -327,4 +276,76 @@ sub get_ENA_biorep_title{
   }else{  # the biorep_id is the same as a run_id
     return ENA::get_ENA_title($biorep_id);
   }
+}
+
+sub make_biosample_track_obj{ 
+# i need 4 pieces of data to make the track obj :  track_name, big_data_url , long_label ,file_type
+
+  my $study_obj = shift;
+  my $biorep_id = shift;
+  my $parent_id = shift;
+
+  my $big_data_url = $study_obj->get_big_data_file_location_from_biorep_id($biorep_id);
+
+  my $long_label_ENA;
+  my $ena_title = get_ENA_biorep_title($study_obj,$biorep_id);
+
+  if($biorep_id!~/biorep/){
+
+    if(!$ena_title){
+
+       print STDERR "biorep id $biorep_id was not found to have a title in ENA\n";
+       $long_label_ENA = "	longLabel ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>\n" ;
+
+    }else{
+
+       $long_label_ENA = "	longLabel ".$ena_title."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>"."\n" ;
+    }
+
+  }else{ # run id would be "E-MTAB-2037.biorep4"
+       
+    my $biorep_accession; 
+
+    if($biorep_id=~/(.+)\.biorep.*/){
+      $biorep_accession = $1;
+    } 
+ 
+    if(!$ena_title){
+
+      print STDERR "first run of biorep id $biorep_id was not found to have a title in ENA\n";
+      # i want the link to be like: http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/E-GEOD-55482.bioreps.txt      
+      $long_label_ENA = "	longLabel AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$1.".bioreps.txt"."\">".$biorep_id."</a>\n" ;
+
+     }else{
+ 
+        $long_label_ENA = "	longLabel ".$ena_title."; AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$biorep_accession.".bioreps.txt"."\">".$biorep_id."</a>"."\n" ;
+      }
+  }
+  utf8::encode($long_label_ENA);
+  my $file_type =$study_obj->give_big_data_file_type_of_biorep_id($biorep_id);
+
+  my $track_obj = SubTrack->new($biorep_id,$parent_id,$big_data_url,$long_label,$type);
+  return $track_obj;
+}
+
+
+# 	track DRR000756
+# 	parent SAMD00009891
+# 	bigDataUrl http://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000756/DRR000756.cram 
+# 	shortLabel BioRep:DRR000756
+# 	longLabel Illumina Genome Analyzer IIx sequencing; Illumina sequencing of cDNAs derived from rice mRNA_Phosphate sufficient_1day_Shoot; ENA link: <a href="http://www.ebi.ac.uk/ena/data/view/DRR000756">DRR000756</a>
+# 	type cram
+sub print_sub_track_stanza{
+
+  my $track_obj = shift;
+  my $file_handler = shift;
+
+  print $fh "	track ". $track_obj->name."\n"; 
+  print $fh "	parent ". $track_obj->parent_name."\n"; 
+  print $fh "	bigDataUrl ".$track_obj->big_data_url."\n"; 
+  print $fh "	shortLabel BioRep:".$track_obj->name."\n";
+  print $fh "	longLabel ".$track_obj->$long_label;
+  print $fh "	type ".$track_obj->big_data_file_type."\n";
+  print $fh "\n";
+
 }

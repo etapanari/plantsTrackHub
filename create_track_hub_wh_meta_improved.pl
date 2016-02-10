@@ -279,7 +279,7 @@ sub get_ENA_biorep_title{
 }
 
 sub make_biosample_sub_track_obj{ 
-# i need 4 pieces of data to make the track obj :  track_name, big_data_url , long_label ,file_type
+# i need 5 pieces of data to make the track obj :  track_name, parent_name, big_data_url , long_label ,file_type
 
   my $study_obj = shift;
   my $biorep_id = shift;

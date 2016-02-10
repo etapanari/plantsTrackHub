@@ -223,7 +223,7 @@ sub make_trackDbtxt_file{
 
   } # end of for each sample
 
-}
+} # end of method
 
 
 # i want they key of the key-value pair of the metadata to have "_" instead of space if they are more than 1 word
@@ -338,7 +338,7 @@ sub make_biosample_sub_track_obj{
 sub print_sub_track_stanza{
 
   my $track_obj = shift;
-  my $file_handler = shift;
+  my $fh = shift;
 
   print $fh "	track ". $track_obj->name."\n"; 
   print $fh "	parent ". $track_obj->parent_name."\n"; 

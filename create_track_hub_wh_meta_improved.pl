@@ -216,7 +216,7 @@ sub make_trackDbtxt_file{
 
     foreach my $biorep_id (keys %{$study_obj->get_biorep_ids_from_sample_id($sample_id)}){
     
-      my $track_obj=make_biosample_track_obj($study_obj,$biorep_id,$sample_id);
+      my $track_obj=make_biosample_sub_track_obj($study_obj,$biorep_id,$sample_id);
       print_sub_track_stanza($track_obj, $fh);
 
     } #end of foreach biorep
@@ -278,7 +278,7 @@ sub get_ENA_biorep_title{
   }
 }
 
-sub make_biosample_track_obj{ 
+sub make_biosample_sub_track_obj{ 
 # i need 4 pieces of data to make the track obj :  track_name, big_data_url , long_label ,file_type
 
   my $study_obj = shift;

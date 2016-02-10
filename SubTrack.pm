@@ -12,7 +12,6 @@ sub new {
     my $track_name = shift;
     my $parent_name = shift;
     my $big_data_url = shift;
-    my $short_label = "BioSample $track_name";
     my $long_label= shift;
     my $type = shift;
 
@@ -20,7 +19,6 @@ sub new {
       track_name => $track_name,
       parent_name => $parent_name,
       big_data_file_url => $big_data_url,
-      short_label => $short_label,
       long_label => $long_label,
       file_type => $type
     };
@@ -45,12 +43,6 @@ sub big_data_url{
 
   my $self = shift;
   return $self->{big_data_file_url};
-}
-
-sub short_label {
-
-  my $self = shift;
-  return $self->{short_label};
 }
 
 sub long_label{

@@ -219,9 +219,9 @@ sub make_trackDbtxt_file{
       my $track_obj=make_biosample_sub_track_obj($study_obj,$biorep_id,$sample_id);
       print_sub_track_stanza($track_obj, $fh);
 
-    } #end of foreach biorep
+    } #end of biorep loop
 
-  } # end of for each sample
+  } # end of sample loop
 
 } # end of method
 
@@ -327,6 +327,7 @@ sub make_biosample_sub_track_obj{
 
   my $track_obj = SubTrack->new($biorep_id,$parent_id,$big_data_url,$long_label_ENA,$file_type);
   return $track_obj;
+
 }
 
 

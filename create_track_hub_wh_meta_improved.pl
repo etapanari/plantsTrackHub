@@ -63,7 +63,8 @@ sub make_study_dir{
   my ($server_dir_full_path,$study_obj) = @_;
   my $study_id = $study_obj->id;
 
-  run_system_command("mkdir $server_dir_full_path/$study_id") or die "I cannot make dir $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+  run_system_command("mkdir $server_dir_full_path/$study_id")
+    or die "I cannot make dir $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
   
 }
 
@@ -71,10 +72,12 @@ sub make_assemblies_dirs{
 
   my ($server_dir_full_path,$study_obj) = @_;
   my $study_id = $study_obj->id;
+  
+  # For every assembly I make a directory for the study -track hub
+  foreach my $assembly_name (keys %{$study_obj->get_assembly_names}){
 
-  foreach my $assembly_name (keys %{$study_obj->get_assembly_names}){ # For every assembly I make a directory for the study -track hub
-
-    run_system_command("mkdir $server_dir_full_path/$study_id/$assembly_name") or die "I cannot make directories of assemblies in $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+    run_system_command("mkdir $server_dir_full_path/$study_id/$assembly_name")
+      or die "I cannot make directories of assemblies in $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
 
   }
 }
@@ -85,7 +88,8 @@ sub make_hubtxt_file{
   my $study_id = $study_obj->id;
   my $hub_txt_file= "$server_dir_full_path/$study_id/hub.txt";
 
-  run_system_command("touch $hub_txt_file") or die "Could not create hub.txt file in the $server_dir_full_path location\n";
+  run_system_command("touch $hub_txt_file")
+    or die "Could not create hub.txt file in the $server_dir_full_path location\n";
   
   open(my $fh, '>', $hub_txt_file) or die "Could not open file '$hub_txt_file' $! in ".__FILE__." line: ".__LINE__."\n";
 
@@ -117,7 +121,8 @@ sub make_genomestxt_file{
 
   my $genomes_txt_file = "$server_dir_full_path/$study_id/genomes.txt";
 
-  run_system_command("touch $genomes_txt_file") or die "Could not create genomes.txt file in the $server_dir_full_path location\n";
+  run_system_command("touch $genomes_txt_file")
+    or die "Could not create genomes.txt file in the $server_dir_full_path location\n";
 
   open(my $fh2, '>', $genomes_txt_file) or die "Could not open file '$genomes_txt_file' $!\n";
 
@@ -150,13 +155,15 @@ sub make_trackDbtxt_file{
 
   my $trackDb_txt_file="$ftp_dir_full_path/$study_id/$assembly_name/trackDb.txt";
 
-  run_system_command("touch $trackDb_txt_file") or die "Could not create trackDb.txt file in the $server_dir_full_path/$study_id/$assembly_name location\n";       
+  run_system_command("touch $trackDb_txt_file")
+    or die "Could not create trackDb.txt file in the $server_dir_full_path/$study_id/$assembly_name location\n";       
 
-  open(my $fh, '>', $trackDb_txt_file) or die "Error in ".__FILE__." line ".__LINE__." Could not open file '$trackDb_txt_file' $!";
+  open(my $fh, '>', $trackDb_txt_file)
+    or die "Error in ".__FILE__." line ".__LINE__." Could not open file '$trackDb_txt_file' $!";
 
   foreach my $sample_id ( keys %{$study_obj->get_sample_ids} ) { 
 
-## print sample super track ##
+  ## print sample super track ##
     print $fh "track ".$sample_id."\n";
     print $fh "superTrack on show\n";
     print $fh "shortLabel BioSample:".$sample_id."\n";
@@ -164,7 +171,7 @@ sub make_trackDbtxt_file{
     
     my $ena_sample_title = ENA::get_ENA_title($sample_id);
 
- # there are cases where the sample doesnt have title ie : SRS429062 doesn't have sample title
+  # there are cases where the sample doesnt have title ie : SRS429062 doesn't have sample title
     if($ena_sample_title and $ena_sample_title !~/^ *$/ ){ 
 
       $longLabel_sample = "longLabel $ena_sample_title ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
@@ -182,7 +189,8 @@ sub make_trackDbtxt_file{
 
     print $fh "metadata hub_created_date=".printlabel_value($date_string)." ";
     
-    my $metadata_respose = ENA::get_metadata_response_from_ENA_warehouse_rest_call($sample_id) ;  # returns a has ref or 0 if unsuccessful
+    # returns a has ref or 0 if unsuccessful
+    my $metadata_respose = ENA::get_metadata_response_from_ENA_warehouse_rest_call($sample_id);
 
     if ($metadata_respose==0){
 
@@ -269,7 +277,8 @@ sub make_trackDbtxt_file{
 }
 
 
-sub printlabel_key {  # i want they key of the key-value pair of the metadata to have "_" instead of space if they are more than 1 word
+# i want they key of the key-value pair of the metadata to have "_" instead of space if they are more than 1 word
+sub printlabel_key {
 
   my $string = shift ;
   my @array = split (/ /,$string) ;
@@ -282,7 +291,8 @@ sub printlabel_key {  # i want they key of the key-value pair of the metadata to
  
 }
 
-sub printlabel_value {   # I want the value of the key-value pair of the metadata to have quotes in the whole string if the value is more than 1 word.
+# I want the value of the key-value pair of the metadata to have quotes in the whole string if the value is more than 1 word.
+sub printlabel_value {
 
   my $string = shift ;
   my @array = split (/ /,$string) ;

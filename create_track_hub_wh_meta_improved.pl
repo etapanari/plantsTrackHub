@@ -1,4 +1,4 @@
-
+# to see these studies in AE call http://plantain:3000/eg/getLibrariesByStudyId/DRP000315
 # perl create_track_hub_wh_meta_improved.pl -study_id DRP000315 -local_server_dir_path /homes/tapanari 
 # or with bioreps:
 # perl create_track_hub_wh_meta_improved.pl -study_id DRP000391 -local_server_dir_path /homes/tapanari 
@@ -33,7 +33,7 @@ GetOptions(
 
   make_genomestxt_file($server_dir_full_path , $study_obj);  
 
-  my %assembly_names = %{$study_obj->get_assembly_names};  # is it good practice to loop here or inside the method?
+  my %assembly_names = %{$study_obj->get_assembly_names}; 
 
   foreach my $assembly_name (keys %assembly_names){
 

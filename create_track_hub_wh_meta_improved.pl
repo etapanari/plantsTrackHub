@@ -1,21 +1,17 @@
 
-#perl create_track_hub_wh_meta_improved.pl -study_id DRP000315 -local_server_dir_path /homes/tapanari 
+# perl create_track_hub_wh_meta_improved.pl -study_id DRP000315 -local_server_dir_path /homes/tapanari 
+# or with bioreps:
+# perl create_track_hub_wh_meta_improved.pl -study_id DRP000391 -local_server_dir_path /homes/tapanari 
 
 use strict ;
 use warnings;
 
-use Getopt::Long;
+use Getopt::Long; # to use the options when calling the script
 use POSIX qw(strftime); # to get GMT time stamp
 use TransformDate;
 use ENA;
 use EG;
 use AEStudy;
-
-use constant {
-
-  SUCCESSFULLY_EXECUTED => 1,
-  UNSUCCESSFULLY_EXECUTED => 0
-};
 
 my ($study_id, $server_dir_full_path); 
 
@@ -31,7 +27,7 @@ GetOptions(
 
   make_study_dir($server_dir_full_path, $study_obj);
 
-  make_assemblies_dir($server_dir_full_path, $study_obj) ;  
+  make_assemblies_dirs($server_dir_full_path, $study_obj) ;  
   
   make_hubtxt_file($server_dir_full_path , $study_obj);
 
@@ -55,14 +51,11 @@ sub run_system_command {
   `$command`;
 
   if($? !=0){ # if exit code of the system command is successful returns 0
-
-    return UNSUCCESSFULLY_EXECUTED; 
+    return 0; 
 
   }else{
- 
-    return SUCCESSFULLY_EXECUTED;
+     return 1;
   }
-  
 }
 
 sub make_study_dir{
@@ -70,35 +63,30 @@ sub make_study_dir{
   my ($server_dir_full_path,$study_obj) = @_;
   my $study_id = $study_obj->id;
 
-  if (run_system_command("mkdir $server_dir_full_path/$study_id") == UNSUCCESSFULLY_EXECUTED){
-    die "I cannot make dir $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
-  }
+  run_system_command("mkdir $server_dir_full_path/$study_id") or die "I cannot make dir $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+  
 }
 
-sub make_assemblies_dir{
+sub make_assemblies_dirs{
 
   my ($server_dir_full_path,$study_obj) = @_;
   my $study_id = $study_obj->id;
 
   foreach my $assembly_name (keys %{$study_obj->get_assembly_names}){ # For every assembly I make a directory for the study -track hub
 
-    if (run_system_command("mkdir $server_dir_full_path/$study_id/$assembly_name") == UNSUCCESSFULLY_EXECUTED){
-      die "I cannot make directories of assemblies in $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
-    }
+    run_system_command("mkdir $server_dir_full_path/$study_id/$assembly_name") or die "I cannot make directories of assemblies in $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
+
   }
 }
 
 sub make_hubtxt_file{
 
   my ($server_dir_full_path,$study_obj) = @_;
-
   my $study_id = $study_obj->id;
   my $hub_txt_file= "$server_dir_full_path/$study_id/hub.txt";
 
-  if (run_system_command("touch $hub_txt_file") == UNSUCCESSFULLY_EXECUTED){
-    die "Could not create hub.txt file in the $server_dir_full_path location\n";
-  }
-
+  run_system_command("touch $hub_txt_file") or die "Could not create hub.txt file in the $server_dir_full_path location\n";
+  
   open(my $fh, '>', $hub_txt_file) or die "Could not open file '$hub_txt_file' $! in ".__FILE__." line: ".__LINE__."\n";
 
   print $fh "hub $study_id\n";
@@ -111,11 +99,8 @@ sub make_hubtxt_file{
   if (!$ena_study_title) {
     print STDERR "I cannot get study title for $study_id from ENA\n";
     $long_label = $long_label = "longLabel ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study_id."\">".$study_id."</a>"."\n";
-  }else
-  {
-
+  }else{
     $long_label = "longLabel $ena_study_title ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study_id."\">".$study_id."</a>"."\n";
-
     utf8::encode($long_label) ; # i do this as from ENA there are some funny data like library names in the long label of the study and perl thinks it's non-ASCii character, while they are not.
     print $fh $long_label;
     print $fh "genomesFile genomes.txt\n";
@@ -126,21 +111,17 @@ sub make_hubtxt_file{
 
 sub make_genomestxt_file{
   
-  my ($server_dir_full_path,$study_obj) = @_;
-  
-  my $assembly_names = $study_obj->get_assembly_names;
+  my ($server_dir_full_path,$study_obj) = @_;  
+  my $assembly_names_href = $study_obj->get_assembly_names;
   my $study_id = $study_obj->id;
 
   my $genomes_txt_file = "$server_dir_full_path/$study_id/genomes.txt";
 
-  if (run_system_command("touch $genomes_txt_file")== UNSUCCESSFULLY_EXECUTED){
-
-    die "Could not create genomes.txt file in the $server_dir_full_path location\n";
-  }
+  run_system_command("touch $genomes_txt_file") or die "Could not create genomes.txt file in the $server_dir_full_path location\n";
 
   open(my $fh2, '>', $genomes_txt_file) or die "Could not open file '$genomes_txt_file' $!\n";
 
-  foreach my $assembly_name (keys %{$assembly_names}) {
+  foreach my $assembly_name (keys %{$assembly_names_href}) {
 
     print $fh2 "genome ".$assembly_name."\n"; 
     print $fh2 "trackDb ".$assembly_name."/trackDb.txt"."\n\n"; 
@@ -165,16 +146,11 @@ sub make_trackDbtxt_file{
 
   my ( $ftp_dir_full_path, $study_obj , $assembly_name) = @_;
     
-  my $meta_keys = ENA::get_all_sample_keys(); # ref to array
   my $study_id =$study_obj->id;
 
   my $trackDb_txt_file="$ftp_dir_full_path/$study_id/$assembly_name/trackDb.txt";
 
-  if(run_system_command("touch $trackDb_txt_file") == UNSUCCESSFULLY_EXECUTED) {
-
-    die "Could not create trackDb.txt file in the $server_dir_full_path/$study_id/$assembly_name location\n";
-
-  }         
+  run_system_command("touch $trackDb_txt_file") or die "Could not create trackDb.txt file in the $server_dir_full_path/$study_id/$assembly_name location\n";       
 
   open(my $fh, '>', $trackDb_txt_file) or die "Error in ".__FILE__." line ".__LINE__." Could not open file '$trackDb_txt_file' $!";
 
@@ -186,9 +162,12 @@ sub make_trackDbtxt_file{
     print $fh "shortLabel BioSample:".$sample_id."\n";
     my $longLabel_sample;
     
-    if(ENA::get_ENA_sample_or_exp_title($sample_id) and ENA::get_ENA_sample_or_exp_title($sample_id) !~/^ *$/ ){  # there are cases where the sample doesnt have title ie : SRS429062 doesn't have sample title
+    my $ena_sample_title = ENA::get_ENA_title($sample_id);
 
-      $longLabel_sample = "longLabel ".ENA::get_ENA_sample_or_exp_title($sample_id)."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
+ # there are cases where the sample doesnt have title ie : SRS429062 doesn't have sample title
+    if($ena_sample_title and $ena_sample_title !~/^ *$/ ){ 
+
+      $longLabel_sample = "longLabel $ena_sample_title ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
 
     }else{
 
@@ -199,26 +178,27 @@ sub make_trackDbtxt_file{
     utf8::encode($longLabel_sample);  
     print $fh $longLabel_sample."\n" ;
 
-    my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;
+    my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;  # date is of this type: "Tue Feb  2 17:57:14 2016 GMT"
 
     print $fh "metadata hub_created_date=".printlabel_value($date_string)." ";
+    
+    my $metadata_respose = ENA::get_metadata_response_from_ENA_warehouse_rest_call($sample_id) ;  # returns a has ref or 0 if unsuccessful
 
-      # returns a has ref or 0 if unsuccessful
-    if (ENA::get_metadata_response_from_ENA_warehouse_rest_call (ENA::create_url_for_call_sample_metadata($sample_id,$meta_keys)) ==0){
+    if ($metadata_respose==0){
 
       print STDERR "No metadata values found for sample $sample_id of study $study_id\n";
 
-    }else{  # if there is metadata
+     }else{  # if there is metadata
 
-      my %metadata_pairs = %{ENA::get_metadata_response_from_ENA_warehouse_rest_call (ENA::create_url_for_call_sample_metadata($sample_id,$meta_keys))};
+      my %metadata_pairs = %{$metadata_respose};
 
       foreach my $meta_key (keys %metadata_pairs) {  # printing the sample metadata 
 
         utf8::encode($meta_key) ;
         my $meta_value = $metadata_pairs{$meta_key} ;
         utf8::encode($meta_value) ;
-
-        if($meta_key =~/date/ and $meta_value =~/[(a-z)|(A-Z)]/){ # if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
+# if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
+        if($meta_key =~/date/ and $meta_value =~/[(a-z)|(A-Z)]/){ 
           $meta_value = TransformDate->change_date($meta_value);
         }
         print $fh printlabel_key($meta_key)."=".printlabel_value($meta_value)." ";
@@ -234,10 +214,7 @@ sub make_trackDbtxt_file{
     foreach my $biorep_id (keys %{$study_obj->get_biorep_ids_from_sample_id($sample_id)}){
 
       my $ae_asssembly_name = $study_obj->get_assembly_name_from_biorep_id($biorep_id) ;
-      my $proper_assembly_name= EG::get_right_assembly_name ( $ae_asssembly_name);
 
-      next unless ($proper_assembly_name eq $assembly_name ) ;#and print "Something is wrong with the assembly name ; AE gives $ae_assembly_name , then my method in EG:get_right_assembly_name gives $proper_assembly_name while it should be $assembly_name\n";  # just for Q.C.
-           
       my $server_location = $study_obj->get_big_data_file_location_from_biorep_id($biorep_id);
 
       print $fh "	track ". $biorep_id."\n"; 
@@ -246,21 +223,7 @@ sub make_trackDbtxt_file{
       print $fh "	shortLabel BioRep:".$biorep_id."\n";
 
       my $long_label_ENA;
-      my $ena_title;
-
-      if($biorep_id =~/biorep/){
-
-        my @runs = @{$study_obj->get_run_ids_of_biorep_id($biorep_id)};
-
-        if(ENA::get_ENA_sample_or_exp_title ($runs[0])){
-          $ena_title = ENA::get_ENA_sample_or_exp_title ($runs[0]);
-        }
-
-      }else{
-        if(ENA::get_ENA_sample_or_exp_title ($biorep_id)){
-          $ena_title = ENA::get_ENA_sample_or_exp_title ($biorep_id);
-        }
-      } 
+      my $ena_title = get_ENA_biorep_title($study_obj,$biorep_id);
 
       if($biorep_id!~/biorep/){
 
@@ -275,9 +238,13 @@ sub make_trackDbtxt_file{
         }
 
       }else{ # run id would be "E-MTAB-2037.biorep4"
+       
+        my $biorep_accession;
 
-        $biorep_id=~/(.+)\.biorep.*/; 
-
+        if($biorep_id=~/(.+)\.biorep.*/){
+          $biorep_accession = $1;
+        } 
+ 
         if(!$ena_title){
 
           print STDERR "first run of biorep id $biorep_id was not found to have a title in ENA\n";
@@ -286,10 +253,10 @@ sub make_trackDbtxt_file{
 
         }else{
  
-          $long_label_ENA = "	longLabel ".$ena_title."; AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$1.".bioreps.txt"."\">".$biorep_id."</a>"."\n" ;
+          $long_label_ENA = "	longLabel ".$ena_title."; AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$biorep_accession.".bioreps.txt"."\">".$biorep_id."</a>"."\n" ;
         }
       }
-      utf8::encode($long_label_ENA) ;
+      utf8::encode($long_label_ENA);
       print $fh $long_label_ENA;
 
       print $fh "	type ".$study_obj->give_big_data_file_type_of_biorep_id($biorep_id)."\n";
@@ -299,6 +266,20 @@ sub make_trackDbtxt_file{
 
   } # end of for each sample
 
+}
+
+
+sub printlabel_key {  # i want they key of the key-value pair of the metadata to have "_" instead of space if they are more than 1 word
+
+  my $string = shift ;
+  my @array = split (/ /,$string) ;
+
+  if (scalar @array > 1) {
+    $string =~ s/ /_/g;
+
+  }
+  return $string;
+ 
 }
 
 sub printlabel_value {   # I want the value of the key-value pair of the metadata to have quotes in the whole string if the value is more than 1 word.
@@ -315,16 +296,25 @@ sub printlabel_value {   # I want the value of the key-value pair of the metadat
  
 }
 
+sub get_ENA_biorep_title{
 
-sub printlabel_key {  # i want they key of the key-value pair of the metadata to have "_" instead of space if they are more than 1 word
+  my $study_obj = shift;
+  my $biorep_id = shift ;
 
-  my $string = shift ;
-  my @array = split (/ /,$string) ;
+  my $biorep_title ;
+  my %run_titles;
 
-  if (scalar @array > 1) {
-    $string =~ s/ /_/g;
+  my @run_ids = @{$study_obj->get_run_ids_of_biorep_id($biorep_id)};
 
+  if(scalar @run_ids > 1){ # then it is a clustered biorep
+    foreach my $run_id (@run_ids){
+      $run_titles{ENA::get_ENA_title($run_id)} =1;  # I get all distinct run titles
+    }
+    my @distinct_run_titles = keys (%run_titles);
+    $biorep_title= join(" ; ",@distinct_run_titles); # the run titles are seperated by comma
+
+    return $biorep_title;
+  }else{  # the biorep_id is the same as a run_id
+    return ENA::get_ENA_title($biorep_id);
   }
-  return $string;
- 
 }

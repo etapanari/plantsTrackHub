@@ -322,9 +322,10 @@ sub make_biosample_sub_track_obj{
       }
   }
   utf8::encode($long_label_ENA);
+
   my $file_type =$study_obj->give_big_data_file_type_of_biorep_id($biorep_id);
 
-  my $track_obj = SubTrack->new($biorep_id,$parent_id,$big_data_url,$long_label,$type);
+  my $track_obj = SubTrack->new($biorep_id,$parent_id,$big_data_url,$long_label_ENA,$file_type);
   return $track_obj;
 }
 

@@ -39,7 +39,7 @@ if ($@) {
   return;
 }
 
- my $url = $server . '/api/trackhub/';
+my $url = $server . '/api/trackhub/';
 my $request = GET($url);
 $request->headers->header(user => $username);
 $request->headers->header(auth_token => $auth_token);

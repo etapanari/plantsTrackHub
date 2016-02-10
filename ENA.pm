@@ -28,7 +28,7 @@ sub get_ENA_study_title{  # there is also another way to get the title. using th
   
 }
 
-sub get_ENA_sample_or_exp_title { # it works also for experiment ids
+sub get_ENA_title { # it works for sample, run and experiment ids
 
   my $sample_id = shift ;
   my $sample_title ;
@@ -55,12 +55,13 @@ sub get_ENA_sample_or_exp_title { # it works also for experiment ids
   }
 }
 
-
 sub get_metadata_response_from_ENA_warehouse_rest_call {  # returns a hash ref if successful, or 0 if not successful -- this is very slow!!!
 
-  my $url =  shift;
-
+  my $sample_id =  shift;
   my %metadata_key_value_pairs;
+
+  my $meta_keys = get_all_sample_keys(); # ref to array
+  my $url = ENA::create_url_for_call_sample_metadata($sample_id,$meta_keys);
 
   my $ua = LWP::UserAgent->new;
   my $response = $ua->get($url); 

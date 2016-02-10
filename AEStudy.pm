@@ -5,7 +5,7 @@ use warnings;
 use EG;
 use ArrayExpress;
 
-## this is a class of an AE study. It considers only PLANT species.
+## this is a class trackof an AE study. It considers only PLANT species.
 
 sub new {
 
@@ -102,8 +102,9 @@ sub get_assembly_name_from_biorep_id{
   my $biorep_id = shift;
   my $run_tuple = $self->{run_tuple};
     
-  return $run_tuple->{$biorep_id}{"assembly_name"};
-
+  my $assembly_name= $run_tuple->{$biorep_id}{"assembly_name"};
+  $assembly_name = EG::get_right_assembly_name( $assembly_name);
+  return $assembly_name;
 }
 
 sub get_sample_id_from_biorep_id{

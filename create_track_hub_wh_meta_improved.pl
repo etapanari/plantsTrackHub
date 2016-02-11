@@ -13,6 +13,7 @@ use ENA;
 use EG;
 use AEStudy;
 use SubTrack;
+use SuperTrack;
 
 my ($study_id, $server_dir_full_path); 
 
@@ -155,73 +156,18 @@ sub make_trackDbtxt_file{
     or die "Error in ".__FILE__." line ".__LINE__." Could not open file '$trackDb_txt_file' $!";
 
   foreach my $sample_id ( keys %{$study_obj->get_sample_ids} ) { 
-
-  ## print sample super track ##
-    print $fh "track ".$sample_id."\n";
-    print $fh "superTrack on show\n";
-    print $fh "shortLabel BioSample:".$sample_id."\n";
-    my $longLabel_sample;
     
-    my $ena_sample_title = ENA::get_ENA_title($sample_id);
-
-  # there are cases where the sample doesnt have title ie : SRS429062 doesn't have sample title
-    if($ena_sample_title and $ena_sample_title !~/^ *$/ ){ 
-
-      $longLabel_sample = "longLabel $ena_sample_title ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
-
-    }else{
-
-      $longLabel_sample = "longLabel "."ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
-      print STDERR "\nCould not get sample title from ENA API for sample $sample_id\n";
-
-    }
-    utf8::encode($longLabel_sample);  
-    print $fh $longLabel_sample."\n" ;
-
-    my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;  # date is of this type: "Tue Feb  2 17:57:14 2016 GMT"
-
-    print $fh "metadata hub_created_date=".printlabel_value($date_string)." ";
-    
-    # returns a has ref or 0 if unsuccessful
-    my $metadata_respose = ENA::get_metadata_response_from_ENA_warehouse_rest_call($sample_id);
-
-    if ($metadata_respose==0){
-
-      print STDERR "No metadata values found for sample $sample_id of study $study_id\n";
-
-     }else{  # if there is metadata
-
-      my %metadata_pairs = %{$metadata_respose};
-
-      foreach my $meta_key (keys %metadata_pairs) {  # printing the sample metadata 
-
-        utf8::encode($meta_key) ;
-        my $meta_value = $metadata_pairs{$meta_key} ;
-        utf8::encode($meta_value) ;
-# if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
-        if($meta_key =~/date/ and $meta_value =~/[(a-z)|(A-Z)]/){ 
-          $meta_value = TransformDate->change_date($meta_value);
-        }
-        print $fh printlabel_key($meta_key)."=".printlabel_value($meta_value)." ";
-      }
-
-    }
-
-    print $fh "\n\n";
-
-## end of the sample super track
-## now printing the bioreps of the sample
+    my $super_track_obj = make_biosample_super_track_obj($sample_id);
+    $super_track_obj->print_super_track_stanza($fh);
 
     foreach my $biorep_id (keys %{$study_obj->get_biorep_ids_from_sample_id($sample_id)}){
     
       my $track_obj=make_biosample_sub_track_obj($study_obj,$biorep_id,$sample_id);
-      print_sub_track_stanza($track_obj, $fh);
+      $track_obj->print_sub_track_stanza($fh);
 
-    } #end of biorep loop
-
-  } # end of sample loop
-
-} # end of method
+    } 
+  }
+} 
 
 
 # i want they key of the key-value pair of the metadata to have "_" instead of space if they are more than 1 word
@@ -276,11 +222,67 @@ sub get_ENA_biorep_title{
   }
 }
 
+sub make_biosample_super_track_obj{
+# i need 3 pieces of data to make the track obj :  track_name, long_label , metadata
+
+  my $sample_id = shift; # track name
+
+  my $ena_sample_title = ENA::get_ENA_title($sample_id);
+  my $long_label;
+
+  # there are cases where the sample doesnt have title ie : SRS429062 doesn't have sample title
+  if($ena_sample_title and $ena_sample_title !~/^ *$/ ){ 
+
+    $long_label= "longLabel $ena_sample_title ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
+
+  }else{
+
+    $long_label = "longLabel "."ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
+    print STDERR "\nCould not get sample title from ENA API for sample $sample_id\n";
+
+  }
+  utf8::encode($long_label);  
+
+  my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;  # date is of this type: "Tue Feb  2 17:57:14 2016 GMT"
+
+  my $metadata_string="metadata hub_created_date=".printlabel_value($date_string);
+    
+  # returns a has ref or 0 if unsuccessful
+  my $metadata_respose = ENA::get_metadata_response_from_ENA_warehouse_rest_call($sample_id);
+  
+  if ($metadata_respose==0){
+
+    print STDERR "No metadata values found for sample $sample_id of study $study_id\n";
+
+  }else{  # if there is metadata
+
+    my %metadata_pairs = %{$metadata_respose};
+    my @meta_pairs;
+
+    foreach my $meta_key (keys %metadata_pairs) {  # printing the sample metadata 
+
+      utf8::encode($meta_key) ;
+      my $meta_value = $metadata_pairs{$meta_key} ;
+      utf8::encode($meta_value) ;
+      # if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
+      if($meta_key =~/date/ and $meta_value =~/[(a-z)|(A-Z)]/){ 
+        $meta_value = TransformDate->change_date($meta_value);
+      }
+      my $pair= printlabel_key($meta_key)."=".printlabel_value($meta_value);
+      push (@meta_pairs, $pair);
+    }
+    $metadata_string = $metadata_string . join(" ",@meta_pairs);
+  }
+
+  my $super_track_obj = SuperTrack->new($sample_id,$long_label,$metadata_string);
+  return $super_track_obj;
+}
+
 sub make_biosample_sub_track_obj{ 
 # i need 5 pieces of data to make the track obj :  track_name, parent_name, big_data_url , long_label ,file_type
 
   my $study_obj = shift;
-  my $biorep_id = shift;
+  my $biorep_id = shift; #track name
   my $parent_id = shift;
 
   my $big_data_url = $study_obj->get_big_data_file_location_from_biorep_id($biorep_id);
@@ -293,11 +295,11 @@ sub make_biosample_sub_track_obj{
     if(!$ena_title){
 
        print STDERR "biorep id $biorep_id was not found to have a title in ENA\n";
-       $long_label_ENA = "	longLabel ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>\n" ;
+       $long_label_ENA = "ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>\n" ;
 
     }else{
 
-       $long_label_ENA = "	longLabel ".$ena_title."; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>"."\n" ;
+       $long_label_ENA = $ena_title." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>"."\n" ;
     }
 
   }else{ # run id would be "E-MTAB-2037.biorep4"
@@ -312,11 +314,11 @@ sub make_biosample_sub_track_obj{
 
       print STDERR "first run of biorep id $biorep_id was not found to have a title in ENA\n";
       # i want the link to be like: http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/E-GEOD-55482.bioreps.txt      
-      $long_label_ENA = "	longLabel AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$1.".bioreps.txt"."\">".$biorep_id."</a>\n" ;
+      $long_label_ENA = "AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$1.".bioreps.txt"."\">".$biorep_id."</a>\n" ;
 
      }else{
  
-        $long_label_ENA = "	longLabel ".$ena_title."; AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$biorep_accession.".bioreps.txt"."\">".$biorep_id."</a>"."\n" ;
+        $long_label_ENA = $ena_title."; AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$biorep_accession.".bioreps.txt"."\">".$biorep_id."</a>"."\n" ;
       }
   }
   utf8::encode($long_label_ENA);
@@ -325,27 +327,5 @@ sub make_biosample_sub_track_obj{
 
   my $track_obj = SubTrack->new($biorep_id,$parent_id,$big_data_url,$long_label_ENA,$file_type);
   return $track_obj;
-
-}
-
-
-# 	track DRR000756
-# 	parent SAMD00009891
-# 	bigDataUrl http://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000756/DRR000756.cram 
-# 	shortLabel BioRep:DRR000756
-# 	longLabel Illumina Genome Analyzer IIx sequencing; Illumina sequencing of cDNAs derived from rice mRNA_Phosphate sufficient_1day_Shoot; ENA link: <a href="http://www.ebi.ac.uk/ena/data/view/DRR000756">DRR000756</a>
-# 	type cram
-sub print_sub_track_stanza{
-
-  my $track_obj = shift;
-  my $fh = shift;
-
-  print $fh "	track ". $track_obj->name."\n"; 
-  print $fh "	parent ". $track_obj->parent_name."\n"; 
-  print $fh "	bigDataUrl ".$track_obj->big_data_url."\n"; 
-  print $fh "	shortLabel BioRep:".$track_obj->name."\n";
-  print $fh "	longLabel ".$track_obj->long_label;
-  print $fh "	type ".$track_obj->big_data_file_type."\n";
-  print $fh "\n";
 
 }

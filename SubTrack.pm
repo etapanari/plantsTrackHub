@@ -18,7 +18,7 @@ sub new {
     my $self = {
       track_name => $track_name,
       parent_name => $parent_name,
-      big_data_file_url => $big_data_url,
+      big_data_url => $big_data_url,
       long_label => $long_label,
       file_type => $type
     };
@@ -26,34 +26,26 @@ sub new {
    return bless $self, $class; # this is what makes a reference into an object
 }
 
-
-sub name{
-
-  my $self = shift;
-  return $self->{track_name};
-}
-
-sub parent_name{
-
-  my $self = shift;
-  return $self->{parent_name};
-}
-
-sub big_data_url{
+# 	track DRR000756
+# 	parent SAMD00009891
+# 	bigDataUrl http://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000756/DRR000756.cram 
+# 	shortLabel BioRep:DRR000756
+# 	longLabel Illumina Genome Analyzer IIx sequencing; Illumina sequencing of cDNAs derived from rice mRNA_Phosphate sufficient_1day_Shoot; ENA link: <a href="http://www.ebi.ac.uk/ena/data/view/DRR000756">DRR000756</a>
+# 	type cram
+sub print_sub_track_stanza{
 
   my $self = shift;
-  return $self->{big_data_file_url};
+  my $fh = shift;
+
+  print $fh "	track ". $self->{track_name}."\n"; 
+  print $fh "	parent ". $self->{parent_name}."\n"; 
+  print $fh "	bigDataUrl ".$self->{big_data_url}."\n"; 
+  print $fh "	shortLabel BioRep:".$self->{track_name}."\n";
+  print $fh "	longLabel ".$self->{long_label};
+  print $fh "	type ".$self->{file_type}."\n";
+  print $fh "\n";
+
 }
 
-sub long_label{
 
-  my $self = shift;
-  return $self->{long_label};
-}
-
-sub big_data_file_type{
-
-  my $self = shift;
-  return $self->{file_type};
-}
 1;

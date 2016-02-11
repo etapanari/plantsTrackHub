@@ -231,11 +231,9 @@ sub make_biosample_super_track_obj{
 
   # there are cases where the sample doesnt have title ie : SRS429062 doesn't have sample title
   if($ena_sample_title and $ena_sample_title !~/^ *$/ ){ 
-
     $long_label= "longLabel $ena_sample_title ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
 
   }else{
-
     $long_label = "longLabel "."ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
     print STDERR "\nCould not get sample title from ENA API for sample $sample_id\n";
 
@@ -284,7 +282,6 @@ sub make_biosample_sub_track_obj{
   my $ena_title = get_ENA_biorep_title($study_obj,$biorep_id);
 
   if($biorep_id!~/biorep/){
-
     if(!$ena_title){
        print STDERR "biorep id $biorep_id was not found to have a title in ENA\n";
        $long_label_ENA = "ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>\n" ;

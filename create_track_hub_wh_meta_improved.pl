@@ -244,18 +244,14 @@ sub make_biosample_super_track_obj{
   utf8::encode($long_label);  
 
   my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;  # date is of this type: "Tue Feb  2 17:57:14 2016 GMT"
-
   my $metadata_string="metadata hub_created_date=".printlabel_value($date_string);
     
   # returns a has ref or 0 if unsuccessful
-  my $metadata_respose = ENA::get_metadata_response_from_ENA_warehouse_rest_call($sample_id);
-  
+  my $metadata_respose = ENA::get_metadata_response_from_ENA_warehouse_rest_call($sample_id);  
   if ($metadata_respose==0){
-
     print STDERR "No metadata values found for sample $sample_id of study $study_id\n";
 
   }else{  # if there is metadata
-
     my %metadata_pairs = %{$metadata_respose};
     my @meta_pairs;
 
@@ -293,7 +289,6 @@ sub make_biosample_sub_track_obj{
   if($biorep_id!~/biorep/){
 
     if(!$ena_title){
-
        print STDERR "biorep id $biorep_id was not found to have a title in ENA\n";
        $long_label_ENA = "ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>\n" ;
 
@@ -302,22 +297,18 @@ sub make_biosample_sub_track_obj{
        $long_label_ENA = $ena_title." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>"."\n" ;
     }
 
-  }else{ # run id would be "E-MTAB-2037.biorep4"
-       
+  }else{ # run id would be "E-MTAB-2037.biorep4"       
     my $biorep_accession; 
-
     if($biorep_id=~/(.+)\.biorep.*/){
       $biorep_accession = $1;
     } 
  
     if(!$ena_title){
-
       print STDERR "first run of biorep id $biorep_id was not found to have a title in ENA\n";
       # i want the link to be like: http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/E-GEOD-55482.bioreps.txt      
       $long_label_ENA = "AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$1.".bioreps.txt"."\">".$biorep_id."</a>\n" ;
 
-     }else{
- 
+     }else{ 
         $long_label_ENA = $ena_title."; AE link: <a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$biorep_accession.".bioreps.txt"."\">".$biorep_id."</a>"."\n" ;
       }
   }

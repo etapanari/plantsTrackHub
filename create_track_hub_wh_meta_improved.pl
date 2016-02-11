@@ -226,7 +226,6 @@ sub make_biosample_super_track_obj{
 # i need 3 pieces of data to make the track obj :  track_name, long_label , metadata
 
   my $sample_id = shift; # track name
-
   my $ena_sample_title = ENA::get_ENA_title($sample_id);
   my $long_label;
 
@@ -242,7 +241,6 @@ sub make_biosample_super_track_obj{
 
   }
   utf8::encode($long_label);  
-
   my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;  # date is of this type: "Tue Feb  2 17:57:14 2016 GMT"
   my $metadata_string="metadata hub_created_date=".printlabel_value($date_string);
     
@@ -282,7 +280,6 @@ sub make_biosample_sub_track_obj{
   my $parent_id = shift;
 
   my $big_data_url = $study_obj->get_big_data_file_location_from_biorep_id($biorep_id);
-
   my $long_label_ENA;
   my $ena_title = get_ENA_biorep_title($study_obj,$biorep_id);
 
@@ -293,7 +290,6 @@ sub make_biosample_sub_track_obj{
        $long_label_ENA = "ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>\n" ;
 
     }else{
-
        $long_label_ENA = $ena_title." ; ENA link: <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>"."\n" ;
     }
 

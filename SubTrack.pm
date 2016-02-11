@@ -32,7 +32,7 @@ sub new {
 # 	shortLabel BioRep:DRR000756
 # 	longLabel Illumina Genome Analyzer IIx sequencing; Illumina sequencing of cDNAs derived from rice mRNA_Phosphate sufficient_1day_Shoot; ENA link: <a href="http://www.ebi.ac.uk/ena/data/view/DRR000756">DRR000756</a>
 # 	type cram
-sub print_sub_track_stanza{
+sub print_track_stanza{
 
   my $self = shift;
   my $fh = shift;

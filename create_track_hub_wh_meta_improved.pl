@@ -67,7 +67,6 @@ sub make_study_dir{
 
   run_system_command("mkdir $server_dir_full_path/$study_id")
     or die "I cannot make dir $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
-  
 }
 
 sub make_assemblies_dirs{
@@ -152,12 +151,12 @@ sub make_trackDbtxt_file{
   foreach my $sample_id ( keys %{$study_obj->get_sample_ids} ) { 
     
     my $super_track_obj = make_biosample_super_track_obj($sample_id);
-    $super_track_obj->print_super_track_stanza($fh);
+    $super_track_obj->print_track_stanza($fh);
 
     foreach my $biorep_id (keys %{$study_obj->get_biorep_ids_from_sample_id($sample_id)}){
     
       my $track_obj=make_biosample_sub_track_obj($study_obj,$biorep_id,$sample_id);
-      $track_obj->print_sub_track_stanza($fh);
+      $track_obj->print_track_stanza($fh);
 
     } 
   }
@@ -175,7 +174,6 @@ sub printlabel_key {
 
   }
   return $string;
- 
 }
 
 # I want the value of the key-value pair of the metadata to have quotes in the whole string if the value is more than 1 word.
@@ -190,7 +188,6 @@ sub printlabel_value {
 
   }
   return $string;
- 
 }
 
 sub get_ENA_biorep_title{

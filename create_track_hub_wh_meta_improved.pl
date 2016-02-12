@@ -22,6 +22,7 @@ GetOptions(
   "local_server_dir_path=s" => \$server_dir_full_path
 );
 
+my $start_run = time();
 
 { # main method
 
@@ -43,7 +44,10 @@ GetOptions(
 
   }
 }
+my $end_run = time();
+my $run_time = $end_run - $start_run;
 
+print "Run time was $run_time\n";
 ##METHODS##
 
 sub run_system_command {
@@ -143,7 +147,7 @@ sub make_trackDbtxt_file{
   my $trackDb_txt_file="$ftp_dir_full_path/$study_id/$assembly_name/trackDb.txt";
 
   run_system_command("touch $trackDb_txt_file")
-    or die "Could not create trackDb.txt file in the $server_dir_full_path/$study_id/$assembly_name location\n";       
+    or die "Could not create trackDb.txt file in the $ftp_dir_full_path/$study_id/$assembly_name location\n";       
 
   open(my $fh, '>', $trackDb_txt_file)
     or die "Error in ".__FILE__." line ".__LINE__." Could not open file '$trackDb_txt_file' $!";
@@ -236,7 +240,7 @@ sub make_biosample_super_track_obj{
   # returns a has ref or 0 if unsuccessful
   my $metadata_respose = ENA::get_metadata_response_from_ENA_warehouse_rest_call($sample_id);  
   if ($metadata_respose==0){
-    print STDERR "No metadata values found for sample $sample_id of study $study_id\n";
+    print STDERR "No metadata values found for sample $sample_id\n";
 
   }else{  # if there is metadata
     my %metadata_pairs = %{$metadata_respose};
@@ -304,3 +308,4 @@ sub make_biosample_sub_track_obj{
   return $track_obj;
 
 }
+

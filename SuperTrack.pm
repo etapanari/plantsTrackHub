@@ -8,19 +8,19 @@ use warnings;
 
 sub new {
 
-    my $class = shift;
-    my $track_name = shift;
-    my $long_label = shift;
-    my $metadata = shift;
+  my $class = shift;
+  my $track_name = shift;
+  my $long_label = shift;
+  my $metadata = shift;
 
-    my $self = {
-      track_name => $track_name,
-      long_label => $long_label,
-      metadata => $metadata
+  my $self = {
+    track_name => $track_name,
+    long_label => $long_label,
+    metadata => $metadata
 
-    };
+  };
 
-   return bless $self, $class; # this is what makes a reference into an object
+  return bless $self, $class; # this is what makes a reference into an object
 }
 
 
@@ -35,11 +35,11 @@ sub print_track_stanza{
   my $self = shift;
   my $fh = shift;
 
-  print $fh "	track ". $self->{track_name}."\n"; 
-  print $fh "	superTrack on show\n";
-  print $fh "	shortLabel BioSample:".$self->{track_name}."\n";
-  print $fh "	longLabel ".$self->{long_label};
-  print $fh "	metadata ".$self->{metadata}."\n";
+  print $fh "track ". $self->{track_name}."\n"; 
+  print $fh "superTrack on show\n";
+  print $fh "shortLabel BioSample:".$self->{track_name}."\n";
+  print $fh "longLabel ".$self->{long_label}."\n";
+  print $fh "metadata ".$self->{metadata}."\n";
   print $fh "\n";
 
 }

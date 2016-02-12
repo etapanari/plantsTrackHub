@@ -8,22 +8,22 @@ use warnings;
 
 sub new {
 
-    my $class = shift;
-    my $track_name = shift;
-    my $parent_name = shift;
-    my $big_data_url = shift;
-    my $long_label= shift;
-    my $type = shift;
+  my $class = shift;
+  my $track_name = shift;
+  my $parent_name = shift;
+  my $big_data_url = shift;
+  my $long_label= shift;
+  my $type = shift;
 
-    my $self = {
-      track_name => $track_name,
-      parent_name => $parent_name,
-      big_data_url => $big_data_url,
-      long_label => $long_label,
-      file_type => $type
-    };
+  my $self = {
+    track_name => $track_name,
+    parent_name => $parent_name,
+    big_data_url => $big_data_url,
+    long_label => $long_label,
+    file_type => $type
+  };
 
-   return bless $self, $class; # this is what makes a reference into an object
+  return bless $self, $class; # this is what makes a reference into an object
 }
 
 # 	track DRR000756

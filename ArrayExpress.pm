@@ -29,11 +29,7 @@ sub get_plant_names_AE_API {  # returns reference to a hash
     my @plant_names_json = @{$json_response};
 
     foreach my $hash_ref (@plant_names_json){
-
-      my %hash = %{$hash_ref};
-
-      $plant_names{ $hash{"ORGANISM"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://plantain:3000/eg/getOrganisms/plants
-        
+      $plant_names{ $hash_ref->{"ORGANISM"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://plantain:3000/json/70/getOrganisms/plants        
     }
 
     return \%plant_names;
@@ -48,6 +44,36 @@ sub get_runs_json_for_study { # returns json string or 0 if url not valid
 
   return JsonResponse::get_Json_response( $url);
 
+}
+
+sub get_study_ids_for_species_name{
+
+  my $plant_names_href = shift;
+
+  my $url;
+  my %study_ids;
+  my $get_runs_by_organism_endpoint="http://plantain:3000/json/70/getLibrariesByOrganism/"; # gets all the bioreps by organism to date that AE has processed so far
+
+  foreach my $plant_name (keys %{$plant_names_href}){
+
+    $url = $get_runs_by_organism_endpoint . $plant_name;
+    my $json_response = JsonResponse::get_Json_response( $url);
+
+    if(!$json_response){ # if response is 0
+
+      return 0 and die "Json response unsuccessful for plant $plant_name\n";
+
+    }else{
+      my @biorep_stanza_json = @{$json_response};
+
+      foreach my $hash_ref (@biorep_stanza_json){
+        $study_ids{ $hash_ref->{"STUDY_ID"} }=1;  
+      }
+    }
+  }
+
+  
+  return \%study_ids;
 }
 
 1;

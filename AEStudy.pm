@@ -2,24 +2,25 @@ package AEStudy;
 
 use strict;
 use warnings;
+use Date::Manip;
 use EG;
 use ArrayExpress;
 
-## this is a class trackof an AE study. It considers only PLANT species.
+## this is a class of an AE study. It considers only PLANT species.
 
 sub new {
 
-    my $class = shift;
-    my $study_id = shift;
+  my $class = shift;
+  my $study_id = shift;
 
-    my $self = {
-      study_id => $study_id,
-    };
+  my $self = {
+    study_id => $study_id,
+  };
 
-    my $run_tuple_of_study_ref =  make_runs_tuple_plants_of_study($study_id);
-    $self->{run_tuple} = $run_tuple_of_study_ref;
+  my $run_tuple_of_study_ref =  make_runs_tuple_plants_of_study($study_id);
+  $self->{run_tuple} = $run_tuple_of_study_ref;
 
-    return bless $self, $class; #this is what makes a reference into an object
+  return bless $self, $class; #this is what makes a reference into an object
 }
 
 sub make_runs_tuple_plants_of_study {  
@@ -51,7 +52,7 @@ sub make_runs_tuple_plants_of_study {
     @runs_json = @{$runs_response};
   }
 
-# a response stanza (the response is usually more than 1 stanza, 1 study has many bioreps, each stanza is a biorep) of this call:  http://plantain:3000/eg/getLibrariesByStudyId/SRP033494
+# a response stanza (the response is usually more than 1 stanza, 1 study has many bioreps, each stanza is a biorep) of this call:  http://plantain:3000/json/70/getLibrariesByStudyId/SRP033494
 #[{"STUDY_ID":"DRP000315","SAMPLE_ID":"SAMD00009892","BIOREP_ID":"DRR000745","RUN_IDS":"DRR000745","ORGANISM":"oryza_sativa_japonica_group",
 #"STATUS":"Complete","ASSEMBLY_USED":"IRGSP-1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 17:39:45",
 #"LAST_PROCESSED_DATE":"Sun Sep 06 2015 02:44:34","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000745/DRR000745.cram"},
@@ -213,6 +214,27 @@ sub give_big_data_file_type_of_biorep_id{
   $server_location =~ /.+\/.+\.(.+)$/;
 
   return $1; # ie cram
+
+}
+
+sub get_AE_last_processed_unix_date{  # of the study : i get all its bioreps and then find the max date of all bioreps # tried with this study: http://plantain:3000/json/70/getLibrariesByStudyId/SRP067728
+
+  my $self= shift;
+  my %biorep_ids = %{$self->get_biorep_ids};
+  my $max_date=0;
+
+  foreach my $biorep_id (keys %biorep_ids){  
+  #each study has more than 1 processed date, as there are usually multiple bioreps in each study with different processed date each. I want to get the most current date
+
+    my $date=$self->get_AE_last_processed_date_from_biorep_id($biorep_id);
+    my $unix_time = UnixDate( ParseDate($date), "%s" );
+
+    if($unix_time > $max_date){
+      $max_date = $unix_time ;
+    }
+  }
+
+  return $max_date;
 
 }
 

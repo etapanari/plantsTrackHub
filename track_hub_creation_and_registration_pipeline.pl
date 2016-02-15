@@ -45,7 +45,7 @@ GetOptions(
 );
    
 my $http = HTTP::Tiny->new();
-my $registry_server = "http://193.62.54.43:5000";
+my $registry_server = "http://beta.trackhubregistry.org";
 
 
 my $date_string = localtime();
@@ -166,7 +166,7 @@ foreach my $hash_ref (@array_response_plants_assemblies){
 
 }
 
-my $get_runs_by_organism_endpoint="http://plantain:3000/eg/getLibrariesByOrganism/"; # i get all the runs by organism to date that Robert has processed so far
+my $get_runs_by_organism_endpoint="http://plantain:3000/json/70/getLibrariesByOrganism/"; # i get all the runs by organism to date that Robert has processed so far
 
 my %robert_plants_done;
 my %runs; # it stores all distinct run ids
@@ -176,7 +176,7 @@ my %robert_plant_study;
 my %studyId_lastProcessedDates;
 my %study_Id_runId;
 
-# a line of this call:  http://plantain:3000/eg/getLibrariesByOrganism/oryza_sativa
+# a line of this call:  http://plantain:3000/json/70/getLibrariesByOrganism/oryza_sativa
 #[{"STUDY_ID":"DRP000315","SAMPLE_ID":"SAMD00009891","RUN_ID":"DRR000756","ORGANISM":"oryza_sativa_japonica_group","STATUS":"Complete","ASSEMBLY_USED":"IRGSP-1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 17:39:45",
 #"LAST_PROCESSED_DATE":"Sat Sep 05 2015 22:40:36","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000756/DRR000756.cram"},
 

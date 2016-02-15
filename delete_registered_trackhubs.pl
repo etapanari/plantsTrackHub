@@ -31,7 +31,7 @@ GetOptions(
 );
 
 
-my $server = "http://193.62.54.43:5000";
+my $server = "http://beta.trackhubregistry.org";
  
 my $auth_token = eval { registry_login($server, $username, $pwd) };
 if ($@) {
@@ -75,7 +75,6 @@ if($response_code == 200) {
 } else {
   print STDERR "delete_registered_trackhubs.pl ERROR : Couldn't get list of trackhubs: %d", $response->{code};
 }
-
 
 sub registry_login {
 

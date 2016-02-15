@@ -23,17 +23,22 @@ my @array_response_plants_assemblies = @{JsonResponse::get_Json_response($ens_ge
 
 my %asmbNames ;
 my %asmbId_asmbName;
+my %plant_names;
 
 foreach my $hash_ref (@array_response_plants_assemblies){
 
-  my %hash = %{$hash_ref};
-  
-  $asmbNames  {$hash{"assembly_name"} } = 1;
+  $asmbNames  {$hash_ref->{"assembly_name"} } = 1;
+  $plant_names{$hash_ref->{"species"}} =1 ;
 
-  next if(! $hash{"assembly_id"}); # 2 species don't have assembly ids now (Feb 2016) : triticum_aestivum and oryza_rufipogon 
+  next if(! $hash_ref->{"assembly_id"}); # 2 species don't have assembly ids now (Feb 2016) : triticum_aestivum and oryza_rufipogon 
 
-  $asmbId_asmbName{$hash{"assembly_id"} } = $hash{"assembly_name"}; 
+  $asmbId_asmbName{$hash_ref->{"assembly_id"} } = $hash_ref->{"assembly_name"}; 
   
+}
+
+sub get_plant_names{
+
+  return \%plant_names;
 }
 
 #"assembly_name":"v1.0","taxonomy_id":"88036","species_id":"1","assembly_id":"GCA_000143415.1

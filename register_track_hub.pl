@@ -32,7 +32,7 @@ GetOptions(
   "assembly_name_accession_pairs=s" => \$assembly_name_accession_pairs
 );
 
-my $server = "http://193.62.54.43:5000";
+my $server = "http://beta.trackhubregistry.org";
 $trackHub_txt_file_url =~ /.+\/(\w+)\/hub\.txt/ ;
 my $hub_name = $1;
 

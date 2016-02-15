@@ -1,4 +1,4 @@
-# to see these studies in AE call http://plantain:3000/eg/getLibrariesByStudyId/DRP000315
+# to see these studies in AE call http://plantain:3000/json/70/getLibrariesByStudyId/DRP000315
 # perl create_track_hub_wh_meta_improved.pl -study_id DRP000315 -local_server_dir_path /homes/tapanari 
 # or with bioreps:
 # perl create_track_hub_wh_meta_improved.pl -study_id DRP000391 -local_server_dir_path /homes/tapanari 

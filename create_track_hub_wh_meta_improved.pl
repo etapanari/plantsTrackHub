@@ -128,12 +128,12 @@ sub make_genomestxt_file{
   run_system_command("touch $genomes_txt_file")
     or die "Could not create genomes.txt file in the $server_dir_full_path location\n";
 
-  open(my $fh2, '>', $genomes_txt_file) or die "Could not open file '$genomes_txt_file' $!\n";
+  open(my $fh, '>', $genomes_txt_file) or die "Could not open file '$genomes_txt_file' $!\n";
 
   foreach my $assembly_name (keys %{$assembly_names_href}) {
 
-    print $fh2 "genome ".$assembly_name."\n"; 
-    print $fh2 "trackDb ".$assembly_name."/trackDb.txt"."\n\n"; 
+    print $fh "genome ".$assembly_name."\n"; 
+    print $fh "trackDb ".$assembly_name."/trackDb.txt"."\n\n"; 
   }
 
 }

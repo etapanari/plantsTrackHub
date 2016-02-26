@@ -10,15 +10,11 @@ Pipeline:
 
 Parameters:
 
--THR_username etapanari   (of the track Hub Registry account) 
-
--THR_password  (of the track Hub Registry account) 
-
--server_dir_full_path  (location of where the track hub files to be stored)
-
--server_url  (server url of the location of the track hubs)
-
--do_track_hubs_from_scratch (optional flag) 
+-THR_username etapanari   (of the track Hub Registry account) <br />
+-THR_password  (of the track Hub Registry account) <br />
+-server_dir_full_path  (location of where the track hub files to be stored)<br />
+-server_url  (server url of the location of the track hubs)<br />
+-do_track_hubs_from_scratch (optional flag) <br />
 
 Example run:
 

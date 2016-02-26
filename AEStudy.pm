@@ -53,16 +53,22 @@ sub make_runs_tuple_plants_of_study {
   }
 
 # a response stanza (the response is usually more than 1 stanza, 1 study has many bioreps, each stanza is a biorep) of this call:  http://plantain:3000/json/70/getLibrariesByStudyId/SRP033494
-#[{"STUDY_ID":"DRP000315","SAMPLE_ID":"SAMD00009892","BIOREP_ID":"DRR000745","RUN_IDS":"DRR000745","ORGANISM":"oryza_sativa_japonica_group",
-#"STATUS":"Complete","ASSEMBLY_USED":"IRGSP-1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 17:39:45",
-#"LAST_PROCESSED_DATE":"Sun Sep 06 2015 02:44:34","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR000/DRR000745/DRR000745.cram"},
+#[{"STUDY_ID":"SRP033494","SAMPLE_ID":"SAMN02434874","BIOREP_ID":"SRR1042754","RUN_IDS":"SRR1042754","ORGANISM":"arabidopsis_thaliana","REFERENCE_ORGANISM":"arabidopsis_thaliana","STATUS":"Complete",
+#"ASSEMBLY_USED":"TAIR10","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:11:03","LAST_PROCESSED_DATE":"Sun Nov 15 2015 00:31:20",
+#"FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/SRR104/004/SRR1042754/SRR1042754.cram"},
+
+# or with merges of CRAMs
+
+#[{"STUDY_ID":"SRP021098","SAMPLE_ID":"SAMN02799120","BIOREP_ID":"E-MTAB-4045.biorep54","RUN_IDS":"SRR1298603,SRR1298604","ORGANISM":"glycine_max","REFERENCE_ORGANISM":"glycine_max",
+#"STATUS":"Complete","ASSEMBLY_USED":"V1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:53:48","LAST_PROCESSED_DATE":"Mon Jan 25 2016 16:46:04",
+#"FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/aggregated_techreps/E-MTAB-4045/E-MTAB-4045.biorep54.cram","MAPPING_QUALITY":77},
 
   foreach my $run_stanza (@runs_json){
     
     if($run_stanza->{"STATUS"} eq "Complete" and $plant_names_AE{$run_stanza->{"ORGANISM"}}){
 
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"sample_id"}=$run_stanza->{"SAMPLE_ID"}; # ie $run{"SRR1042754"}{"sample_id"}="SRS1046581"
-      $run_tuple{$run_stanza->{"BIOREP_ID"}}{"organism"}=$run_stanza->{"ORGANISM"};
+      $run_tuple{$run_stanza->{"BIOREP_ID"}}{"organism"}=$run_stanza->{"REFERENCE_ORGANISM"};
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"assembly_name"}=$run_stanza->{"ASSEMBLY_USED"};  #ie "TAIR10"
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"big_data_file_server_location"}=$run_stanza->{"FTP_LOCATION"};
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"AE_processed_date"}=$run_stanza->{"LAST_PROCESSED_DATE"};
@@ -74,11 +80,45 @@ sub make_runs_tuple_plants_of_study {
   
 }
 
-
 sub id{
 
   my $self = shift;
   return $self->{study_id};
+}
+
+sub get_biorep_ids_by_organism{
+
+  my $self = shift;
+  my $organism_name = shift;
+  my $run_tuple = $self->{run_tuple};
+  my %biorep_ids;
+
+  foreach my $biorep_id (keys %{$run_tuple}){
+    
+    if ($run_tuple->{$biorep_id}{"organism"} eq $organism_name){
+      $biorep_ids {$biorep_id} = 1; 
+    }    
+  }
+
+  return \%biorep_ids;
+}
+
+sub get_organism_names_assembly_names{
+
+  my $self = shift;
+  my $run_tuple = $self->{run_tuple};
+  my %organism_names;
+  my $organism_name;
+
+  foreach my $biorep_id (keys %{$run_tuple}){
+    
+    $organism_name = $run_tuple->{$biorep_id}{"organism"};
+    $organism_names {$organism_name} = $run_tuple->{$biorep_id}{"assembly_name"}; 
+    
+  }
+
+  return \%organism_names;
+
 }
 
 sub get_sample_ids{
@@ -203,7 +243,6 @@ sub get_run_ids_of_biorep_id{  # could be more than 1 run id : "RUN_IDS":"DRR001
   return \@run_ids;
 }
 
-
 sub give_big_data_file_type_of_biorep_id{
 
   my $self=shift;
@@ -238,4 +277,20 @@ sub get_AE_last_processed_unix_date{  # of the study : i get all its bioreps and
 
 }
 
+# sub get_assembly_names_organism{
+#   
+#   my $self = shift;
+#   my $run_tuple = $self->{run_tuple};
+#   my %assembly_names_organism;
+# 
+#   foreach my $biorep_id (keys %{$run_tuple}){
+#     
+#     my $assembly_name = $run_tuple->{$biorep_id}{"assembly_name"};
+#     $assembly_name = EG::get_right_assembly_name( $assembly_name);
+#     $assembly_names_organism {$assembly_name}{$run_tuple->{$biorep_id}{"organism"}} = 1; # it will be like: $assembly_names_organism{"v1.0"}{"selaginella_moellendorffii"}=1
+#     
+#   }
+# 
+#   return \%assembly_names_organism;
+# }
 1;

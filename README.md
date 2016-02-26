@@ -6,7 +6,7 @@ Every track hub represents an ENA study. A track hub can have more than 1 plant 
 
 Pipeline:
 
- pipeline_create_register_track_hubs.pl:
+ pipeline_create_register_track_hubs.pl
 
 Parameters:
 
@@ -18,6 +18,6 @@ Parameters:
 
 Example run:
 
-perl pipeline_create_register_track_hubs.pl -THR_username etapanari -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/ena_warehouse_meta/testing -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/ena_warehouse_meta/testing  -do_track_hubs_from_scratch 1> output_wh_26Feb 2>errors_wh_26Feb
+perl pipeline_create_register_track_hubs.pl -THR_username etapanari -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/ena_warehouse_meta/testing -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/ena_warehouse_meta/testing  -do_track_hubs_from_scratch 1> output 2>errors
 
 

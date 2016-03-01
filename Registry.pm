@@ -100,6 +100,7 @@ sub register_track_hub{
     }
 
   } else {
+    $return_string = "Took a funny respose code: ".$response->code."\n";
     print STDERR "\nERROR: register_track_hub in Registry module ";
     print STDERR "$assembly_name_accession_pairs , ";
     print STDERR  $hub_name."\t".$response->code."\t". $response->content."\n";

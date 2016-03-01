@@ -33,7 +33,7 @@ sub make_runs_tuple_plants_of_study {
 
   if ($plant_names_response ==0){
 
-    die "Could not get plant names from AE REST call /getOrganisms/plants\n";
+    die "Could not get plant names from AE REST call /getOrganisms/plants in AEStudy module\n";
 
   }else{
 
@@ -45,14 +45,14 @@ sub make_runs_tuple_plants_of_study {
 
   if ($runs_response ==0){
 
-    die "Could not get runs for study $study_id using AE REST call /getLibrariesByStudyId/$study_id \n";
+    die "Could not get runs for study $study_id using AE REST call /getRunsByStudyId/$study_id in AEStudy module\n";
 
   }else{
 
     @runs_json = @{$runs_response};
   }
 
-# a response stanza (the response is usually more than 1 stanza, 1 study has many bioreps, each stanza is a biorep) of this call:  http://plantain:3000/json/70/getLibrariesByStudyId/SRP033494
+# a response stanza (the response is usually more than 1 stanza, 1 study has many bioreps, each stanza is a biorep) of this call:  http://plantain:3000/json/70/getRunsByStudyId/SRP033494
 #[{"STUDY_ID":"SRP033494","SAMPLE_ID":"SAMN02434874","BIOREP_ID":"SRR1042754","RUN_IDS":"SRR1042754","ORGANISM":"arabidopsis_thaliana","REFERENCE_ORGANISM":"arabidopsis_thaliana","STATUS":"Complete",
 #"ASSEMBLY_USED":"TAIR10","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:11:03","LAST_PROCESSED_DATE":"Sun Nov 15 2015 00:31:20",
 #"FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/SRR104/004/SRR1042754/SRR1042754.cram"},
@@ -67,6 +67,7 @@ sub make_runs_tuple_plants_of_study {
     
     if($run_stanza->{"STATUS"} eq "Complete" and $plant_names_AE{$run_stanza->{"ORGANISM"}}){
 
+      #$run_tuple{$run_stanza->{"BIOREP_ID"}}{"sample_id"}{$run_stanza->{"SAMPLE_ID"}}=1; # ie $run{"SRR1042754"}{"sample_id"}{"SRS1046581"}=1
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"sample_id"}=$run_stanza->{"SAMPLE_ID"}; # ie $run{"SRR1042754"}{"sample_id"}="SRS1046581"
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"organism"}=$run_stanza->{"REFERENCE_ORGANISM"};
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"assembly_name"}=$run_stanza->{"ASSEMBLY_USED"};  #ie "TAIR10"
@@ -154,8 +155,9 @@ sub get_sample_id_from_biorep_id{
   my $biorep_id = shift;
   my $run_tuple = $self->{run_tuple};
    
+  #my @sample_ids= keys %{$run_tuple->{$biorep_id}{"sample_id"}};
   return $run_tuple->{$biorep_id}{"sample_id"};
-  
+  #return \@sample_ids;
 }
 
 sub get_biorep_ids{
@@ -256,7 +258,7 @@ sub give_big_data_file_type_of_biorep_id{
 
 }
 
-sub get_AE_last_processed_unix_date{  # of the study : i get all its bioreps and then find the max date of all bioreps # tried with this study: http://plantain:3000/json/70/getLibrariesByStudyId/SRP067728
+sub get_AE_last_processed_unix_date{  # of the study : i get all its bioreps and then find the max date of all bioreps # tried with this study: http://plantain:3000/json/70/getRunsByStudyId/SRP067728
 
   my $self= shift;
   my %biorep_ids = %{$self->get_biorep_ids};

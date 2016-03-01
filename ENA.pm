@@ -55,20 +55,21 @@ sub get_ENA_title { # it works for sample, run and experiment ids
   }
 }
 
-sub get_metadata_response_from_ENA_warehouse_rest_call {  # returns a hash ref if successful, or 0 if not successful -- this is very slow!!!
+sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a hash ref if successful, or 0 if not successful -- this is very slow!!!
 
   my $sample_id =  shift;
+  my $meta_keys = shift; 
+
   my %metadata_key_value_pairs;
 
-  my $meta_keys = get_all_sample_keys(); # ref to array
   my $url = ENA::create_url_for_call_sample_metadata($sample_id,$meta_keys);
 
   my $ua = LWP::UserAgent->new;
+
   my $response = $ua->get($url); 
-
   my $response_code= $response->code;
-  my $response_string = $response->decoded_content;
 
+  my $response_string = $response->decoded_content;
   my @lines = split(/\n/, $response_string);
   my $metadata_keys_line =  $lines[0];
   my $metadata_values_line =  $lines[1];
@@ -86,7 +87,14 @@ sub get_metadata_response_from_ENA_warehouse_rest_call {  # returns a hash ref i
       sleep 5;
       $response = $ua->get($url);
       $response_code= $response->code;
+
       if($response_code == 200){
+
+        $response_string = $response->decoded_content;
+        @lines = split(/\n/, $response_string);
+        $metadata_keys_line =  $lines[0];
+        $metadata_values_line =  $lines[1];
+
         $flag_success =1 ;
         print "Got metadata after all!\n";
         last;
@@ -94,23 +102,12 @@ sub get_metadata_response_from_ENA_warehouse_rest_call {  # returns a hash ref i
 
     }
 
-    if($flag_success ==0 or $response_string =~ /^ *$/){
+    if($flag_success ==0 or $response_string =~ /^ *$/){  # if after the 10 attempts I still don't get the metadata..
      
       print STDERR "Didn't find metadata for url $url"."\t".$response->code."\n\n";
       return 0;
     }
 
-  }
-
-
-  if(!$metadata_values_line){
-    print STDERR "\n response code: ".$response_code." Metadata values are empty for url: $url\n\n";
-    return 0;
-  }
-  
-  if($metadata_keys_line =~ /^ *$/){
-    print STDERR "\n response code: ".$response_code." Metadata keys are empty for url: $url\n\n";
-    return 0;
   }
   
   my @metadata_keys = split(/\t/, $metadata_keys_line);
@@ -141,10 +138,48 @@ sub get_all_sample_keys{
   my @array_keys;
 
   my $url ="http://www.ebi.ac.uk/ena/data/warehouse/usage?request=fields&result=sample";
+
   my $ua = LWP::UserAgent->new;
+
   my $response = $ua->get($url); 
   my $response_string = $response->decoded_content;
-  my @keys = split(/\n/, $response_string);
+  my $response_code= $response->code;
+ 
+  my @keys;
+
+  if($response_code != 200 or $response_string =~ /^ *$/ ){
+
+    print "Couldn't get sample metadata keys using $url with the first attempt, retrying..\n" ;
+
+    my $flag_success = 0 ;
+    for(my $i=1; $i<=10; $i++) {
+
+      print $i .".Retrying attempt: Retrying after 5s...\n";
+      sleep 5;
+      $response = $ua->get($url);
+      $response_code= $response->code;
+
+      if($response_code == 200){
+
+        $response_string = $response->decoded_content;
+        @keys = split(/\n/, $response_string);
+
+        $flag_success =1 ;
+        print "Got sample metadata keys after all!\n";
+        last;
+      }
+
+    }
+    if($flag_success ==0 or $response_string =~ /^ *$/){  # if after the 10 attempts I still don't get the metadata..
+     
+      print STDERR "Didn't get response for sample metadata keys using url $url"."\t".$response->code."\n\n";
+      return 0;
+    }
+
+  }else{
+
+    @keys = split(/\n/, $response_string);
+  }
 
   foreach my $key (@keys){
     push (@array_keys ,$key);

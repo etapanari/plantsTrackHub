@@ -1,10 +1,3 @@
-# before I run I set up my PERL5LIB doing 2 things:  ********************************************************
-# PERL5LIB=/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
-# source /nfs/panda/ensemblgenomes/apis/ensembl/81/setup.sh
-
-# or simply:
-#PERL5LIB=/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-variation/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-rest/lib:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-production/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-pipeline/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-hive/modules:/nfs/production/panda/ensemblgenomes/development/tapanari/ensemblgenomes-api/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-funcgen/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-compara/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl-analysis/modules:/nfs/production/panda/ensemblgenomes/apis/ensembl/81/ensembl/modules:/nfs/production/panda/ensemblgenomes/apis/bioperl/run-stable:/nfs/production/panda/ensemblgenomes/apis/bioperl/stable:/nfs/panda/ensemblgenomes/development/tapanari/eg-ena/modules
-
 # example run:
 
 # perl pipeline_create_register_track_hubs.pl -THR_username etapanari -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/ena_warehouse_meta/testing -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/ena_warehouse_meta/testing  1> output_wh_23Feb 2>errors_wh_23Feb
@@ -619,9 +612,10 @@ sub print_registry_registered_number_of_th{
 sub get_list_of_all_AE_plant_studies_currently{
 
   my $plant_names_href = EG::get_plant_names;
-  my %study_ids = %{ArrayExpress::get_study_ids_for_species_name($plant_names_href)};
+  
+  my $study_ids_href = ArrayExpress::get_completed_study_ids_for_plants($plant_names_href);
 
-  return \%study_ids;
+  return $study_ids_href;
 }
 
 sub make_and_register_track_hub{

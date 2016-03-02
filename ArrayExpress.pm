@@ -40,7 +40,7 @@ sub get_plant_names_AE_API {  # returns reference to a hash
 sub get_runs_json_for_study { # returns json string or 0 if url not valid
   
   my $study_id = shift;
-  my $url = $array_express_url . "/getRunsByStudyId/$study_id";
+  my $url = $array_express_url . "/getRunsByStudy/$study_id";
 
   return JsonResponse::get_Json_response( $url);
 

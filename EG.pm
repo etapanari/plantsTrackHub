@@ -24,13 +24,22 @@ my @array_response_plants_assemblies = @{JsonResponse::get_Json_response($ens_ge
 my %asmbNames ;
 my %asmbId_asmbName;
 my %plant_names;
+my %species_name_assembly_id_hash;
 
 foreach my $hash_ref (@array_response_plants_assemblies){
 
-  $asmbNames  {$hash_ref->{"assembly_name"} } = 1;
+  $asmbNames  {$hash_ref->{"assembly_name"}} = 1;
   $plant_names{$hash_ref->{"species"}} =1 ;
 
-  next if(! $hash_ref->{"assembly_id"}); # 2 species don't have assembly ids now (Feb 2016) : triticum_aestivum and oryza_rufipogon 
+  if(! $hash_ref->{"assembly_id"}){# for the 2 species without assembly id , I store 0000, this is specifically for the THR to work
+
+    $species_name_assembly_id_hash{$hash_ref->{"species"}} = "0000" ; # i make the hash with 2 keys because the assembly name is not unique: v1.0 GCA_000005505.1 brachypodium_distachyon
+                                                                                                                                                                                  # v1.0 GCA_000143415.1 selaginella_moellendorffii
+  }else{
+
+    $species_name_assembly_id_hash {$hash_ref->{"species"} } =  $hash_ref->{"assembly_id"};
+  }
+  next if(!$hash_ref->{"assembly_id"}); # 2 species don't have assembly ids now (Feb 2016) : triticum_aestivum and oryza_rufipogon 
 
   $asmbId_asmbName{$hash_ref->{"assembly_id"} } = $hash_ref->{"assembly_name"}; 
   
@@ -63,6 +72,13 @@ sub get_right_assembly_name{  # this method returns the right assembly name in t
   }
   return $assembly_name;
   
+}
+
+
+sub get_species_name_assembly_id_hash{
+
+  return \%species_name_assembly_id_hash;
+
 }
 
 1;

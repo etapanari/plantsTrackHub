@@ -7,17 +7,28 @@ use LWP::UserAgent;
 use XML::LibXML;
 use utf8;
 
+my $ua = LWP::UserAgent->new;
+my $parser = XML::LibXML->new;
+
 sub get_ENA_study_title{  # there is also another way to get the title. using the warehouse call. check both and see which one is faster
 
   my $study_id = shift; 
   my $study_title;
 
   my $url ="http://www.ebi.ac.uk/ena/data/view/$study_id&display=xml";
-  my $ua = LWP::UserAgent->new;
-  my $response = $ua->get($url); 
-  my $response_string = $response->decoded_content;
 
-  my $parser = XML::LibXML->new;
+  my $response = $ua->get($url); 
+
+  my $response_string;
+
+  if ($response->is_success) {
+    $response_string = $response->decoded_content;  
+  }
+  else {
+    return 0;
+  }
+
+
   my $doc = $parser->parse_string($response_string);
 
   my @nodes = $doc->findnodes("//STUDY_TITLE");
@@ -34,11 +45,16 @@ sub get_ENA_title { # it works for sample, run and experiment ids
   my $sample_title ;
 
   my $url ="http://www.ebi.ac.uk/ena/data/view/$sample_id&display=xml";
-  my $ua = LWP::UserAgent->new;
-  my $response = $ua->get($url); 
-  my $response_string = $response->decoded_content;
 
-  my $parser = XML::LibXML->new;
+  my $response = $ua->get($url); 
+  my $response_string;
+
+  if ($response->is_success) {
+    $response_string = $response->decoded_content;  
+  }
+  else {
+    return 0;
+  }
   my $doc = $parser->parse_string($response_string);
 
   if(!$doc->findnodes("//TITLE")){
@@ -64,12 +80,18 @@ sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a has
 
   my $url = ENA::create_url_for_call_sample_metadata($sample_id,$meta_keys);
 
-  my $ua = LWP::UserAgent->new;
-
   my $response = $ua->get($url); 
+  my $response_string;
+
+  if ($response->is_success) {
+    $response_string = $response->decoded_content;  
+  }
+  else {
+    return 0;
+  }
+
   my $response_code= $response->code;
 
-  my $response_string = $response->decoded_content;
   my @lines = split(/\n/, $response_string);
   my $metadata_keys_line =  $lines[0];
   my $metadata_values_line =  $lines[1];
@@ -111,7 +133,7 @@ sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a has
   }
   
   my @metadata_keys = split(/\t/, $metadata_keys_line);
-  my @metadata_values = split(/\t/, $metadata_values_line); # here i get error
+  my @metadata_values = split(/\t/, $metadata_values_line); 
 
   my $index = 0;
 
@@ -139,10 +161,10 @@ sub get_all_sample_keys{
 
   my $url ="http://www.ebi.ac.uk/ena/data/warehouse/usage?request=fields&result=sample";
 
-  my $ua = LWP::UserAgent->new;
-
   my $response = $ua->get($url); 
+
   my $response_string = $response->decoded_content;
+
   my $response_code= $response->code;
  
   my @keys;
@@ -157,6 +179,9 @@ sub get_all_sample_keys{
       print $i .".Retrying attempt: Retrying after 5s...\n";
       sleep 5;
       $response = $ua->get($url);
+
+      my $response_string = $response->decoded_content;
+
       $response_code= $response->code;
 
       if($response_code == 200){

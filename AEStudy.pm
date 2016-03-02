@@ -45,21 +45,21 @@ sub make_runs_tuple_plants_of_study {
 
   if ($runs_response ==0){
 
-    die "Could not get runs for study $study_id using AE REST call /getRunsByStudyId/$study_id in AEStudy module\n";
+    die "Could not get runs for study $study_id using AE REST call /getRunsByStudy/$study_id in AEStudy module\n";
 
   }else{
 
     @runs_json = @{$runs_response};
   }
 
-# a response stanza (the response is usually more than 1 stanza, 1 study has many bioreps, each stanza is a biorep) of this call:  http://plantain:3000/json/70/getRunsByStudyId/SRP033494
-#[{"STUDY_ID":"SRP033494","SAMPLE_ID":"SAMN02434874","BIOREP_ID":"SRR1042754","RUN_IDS":"SRR1042754","ORGANISM":"arabidopsis_thaliana","REFERENCE_ORGANISM":"arabidopsis_thaliana","STATUS":"Complete",
+# a response stanza (the response is usually more than 1 stanza, 1 study has many bioreps, each stanza is a biorep) of this call:  http://plantain:3000/json/70/getRunsByStudy/SRP033494
+#[{"STUDY_ID":"SRP033494","SAMPLE_IDS":"SAMN02434874","BIOREP_ID":"SRR1042754","RUN_IDS":"SRR1042754","ORGANISM":"arabidopsis_thaliana","REFERENCE_ORGANISM":"arabidopsis_thaliana","STATUS":"Complete",
 #"ASSEMBLY_USED":"TAIR10","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:11:03","LAST_PROCESSED_DATE":"Sun Nov 15 2015 00:31:20",
 #"FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/SRR104/004/SRR1042754/SRR1042754.cram"},
 
 # or with merges of CRAMs
 
-#[{"STUDY_ID":"SRP021098","SAMPLE_ID":"SAMN02799120","BIOREP_ID":"E-MTAB-4045.biorep54","RUN_IDS":"SRR1298603,SRR1298604","ORGANISM":"glycine_max","REFERENCE_ORGANISM":"glycine_max",
+#[{"STUDY_ID":"SRP021098","SAMPLE_IDS":"SAMN02799120","BIOREP_ID":"E-MTAB-4045.biorep54","RUN_IDS":"SRR1298603,SRR1298604","ORGANISM":"glycine_max","REFERENCE_ORGANISM":"glycine_max",
 #"STATUS":"Complete","ASSEMBLY_USED":"V1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:53:48","LAST_PROCESSED_DATE":"Mon Jan 25 2016 16:46:04",
 #"FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/aggregated_techreps/E-MTAB-4045/E-MTAB-4045.biorep54.cram","MAPPING_QUALITY":77},
 
@@ -67,8 +67,7 @@ sub make_runs_tuple_plants_of_study {
     
     if($run_stanza->{"STATUS"} eq "Complete" and $plant_names_AE{$run_stanza->{"ORGANISM"}}){
 
-      #$run_tuple{$run_stanza->{"BIOREP_ID"}}{"sample_id"}{$run_stanza->{"SAMPLE_ID"}}=1; # ie $run{"SRR1042754"}{"sample_id"}{"SRS1046581"}=1
-      $run_tuple{$run_stanza->{"BIOREP_ID"}}{"sample_id"}=$run_stanza->{"SAMPLE_ID"}; # ie $run{"SRR1042754"}{"sample_id"}="SRS1046581"
+      $run_tuple{$run_stanza->{"BIOREP_ID"}}{"sample_ids"}=$run_stanza->{"SAMPLE_IDS"}; # ie $run{"SRR1042754"}{"sample_ids"}="SAMN02434874,SAMN02434875"
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"organism"}=$run_stanza->{"REFERENCE_ORGANISM"};
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"assembly_name"}=$run_stanza->{"ASSEMBLY_USED"};  #ie "TAIR10"
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"big_data_file_server_location"}=$run_stanza->{"FTP_LOCATION"};
@@ -131,8 +130,13 @@ sub get_sample_ids{
   my %biorep_ids = %{$self->get_biorep_ids};
 
   foreach my $biorep_id (keys %biorep_ids){
+   
+    my $sample_ids_string = $run_tuple->{$biorep_id} {"sample_ids"};
+    my @sample_ids_from_string = split (/,/ , $sample_ids_string);
 
-    $sample_ids{$run_tuple->{$biorep_id} {"sample_id"}} = 1;
+    foreach my $sample_id (@sample_ids_from_string){
+      $sample_ids{$sample_id} = 1;
+    }
   }
 
   return \%sample_ids;
@@ -149,15 +153,15 @@ sub get_assembly_name_from_biorep_id{
   return $assembly_name;
 }
 
-sub get_sample_id_from_biorep_id{
+sub get_sample_ids_from_biorep_id{
 
   my $self = shift;
   my $biorep_id = shift;
   my $run_tuple = $self->{run_tuple};
    
-  #my @sample_ids= keys %{$run_tuple->{$biorep_id}{"sample_id"}};
-  return $run_tuple->{$biorep_id}{"sample_id"};
-  #return \@sample_ids;
+  my @sample_ids= split (/,/,$run_tuple->{$biorep_id}{"sample_ids"});
+  
+  return \@sample_ids;
 }
 
 sub get_biorep_ids{
@@ -184,11 +188,15 @@ sub get_biorep_ids_from_sample_id{
 
   foreach my $biorep_id (keys %{$run_tuple}){
 
-    if($run_tuple->{$biorep_id}{"sample_id"} eq $sample_id){  #error
+    my @sample_ids= split (/,/,$run_tuple->{$biorep_id}{"sample_ids"});  # could be "SAMPLE_IDS":"SAMN02666905,SAMN02666906"
 
-     $biorep_ids{$biorep_id} = 1;
+    foreach my $sample_id_from_string (@sample_ids){
+
+      if($sample_id_from_string eq $sample_id){  
+
+       $biorep_ids{$biorep_id} = 1;
+     }
    }
-
   }
 
   return \%biorep_ids;
@@ -258,7 +266,7 @@ sub give_big_data_file_type_of_biorep_id{
 
 }
 
-sub get_AE_last_processed_unix_date{  # of the study : i get all its bioreps and then find the max date of all bioreps # tried with this study: http://plantain:3000/json/70/getRunsByStudyId/SRP067728
+sub get_AE_last_processed_unix_date{  # of the study : i get all its bioreps and then find the max date of all bioreps # tried with this study: http://plantain:3000/json/70/getRunsByStudy/SRP067728
 
   my $self= shift;
   my %biorep_ids = %{$self->get_biorep_ids};
@@ -279,20 +287,4 @@ sub get_AE_last_processed_unix_date{  # of the study : i get all its bioreps and
 
 }
 
-# sub get_assembly_names_organism{
-#   
-#   my $self = shift;
-#   my $run_tuple = $self->{run_tuple};
-#   my %assembly_names_organism;
-# 
-#   foreach my $biorep_id (keys %{$run_tuple}){
-#     
-#     my $assembly_name = $run_tuple->{$biorep_id}{"assembly_name"};
-#     $assembly_name = EG::get_right_assembly_name( $assembly_name);
-#     $assembly_names_organism {$assembly_name}{$run_tuple->{$biorep_id}{"organism"}} = 1; # it will be like: $assembly_names_organism{"v1.0"}{"selaginella_moellendorffii"}=1
-#     
-#   }
-# 
-#   return \%assembly_names_organism;
-# }
 1;

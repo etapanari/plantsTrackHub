@@ -10,6 +10,7 @@ use HTTP::Request::Common qw/GET DELETE POST/;
 use LWP::UserAgent;
 
 my $server = "https://beta.trackhubregistry.org";
+my $ua = LWP::UserAgent->new;
 $| = 1; 
 
 sub new {
@@ -36,6 +37,7 @@ sub new {
 sub register_track_hub{
  
   my $self = shift;
+
   my $track_hub_id = shift;
   my $trackHub_txt_file_url = shift;
   my $assembly_name_accession_pairs = shift; 
@@ -45,11 +47,6 @@ sub register_track_hub{
   my $username = $self->{username};
   my $password = $self->{pwd};
   my $auth_token = $self->{auth_token};
-
-  my $ua = LWP::UserAgent->new;
-
-  $trackHub_txt_file_url =~ /.+\/(\w+)\/hub\.txt$/ ;
-  my $hub_name = $1;
 
   my $url = $server . '/api/trackhub';
 
@@ -66,17 +63,18 @@ sub register_track_hub{
     'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies }));
   $request->headers->header(user => $username);
   $request->headers->header(auth_token => $auth_token);
+
   my $response = $ua->request($request);
 
   my $response_code= $response->code;
 
   if($response_code == 201) {
 
-   $return_string= "	..$hub_name is Registered\n";
+   $return_string= "	..$track_hub_id is Registered\n";
 
-  }elsif($response_code == 503 or $response_code == 500 or $response_code == 400){ #and $response->content=~/server response timed out/)) {
+  }else{ 
 
-    $return_string= "\tCouldn't register track hub with the first attempt: " .$hub_name."\t".$assembly_name_accession_pairs."\t".$response->code."\t" .$response->content."\n";
+    $return_string= "\tCouldn't register track hub with the first attempt: " .$track_hub_id."\t".$assembly_name_accession_pairs."\t".$response->code."\t" .$response->content."\n";
 
     my $flag_success=0;
 
@@ -86,26 +84,22 @@ sub register_track_hub{
       sleep 5;
       $response = $ua->request($request);
       $response_code= $response->code;
+
       if($response_code == 201){
         $flag_success =1 ;
-         $return_string = $return_string. "	..$hub_name is Registered\n";
+        $return_string = $return_string. "	..$track_hub_id is Registered\n";
         last;
       }
 
     }
 
     if($flag_success ==0){
-     
-      print STDERR $hub_name."\t".$assembly_name_accession_pairs."\t".$response->code."\t". $response->content."\n\n";
+
+      $return_string = $return_string . "	..Didn't manage to register the track hub $track_hub_id , check in STDERR\n";
+      print STDERR $track_hub_id."\t".$assembly_name_accession_pairs."\t".$response->code."\t". $response->content."\n\n";
     }
 
-  } else {
-    $return_string = "Took a funny respose code: ".$response->code."\n";
-    print STDERR "\nERROR: register_track_hub in Registry module ";
-    print STDERR "$assembly_name_accession_pairs , ";
-    print STDERR  $hub_name."\t".$response->code."\t". $response->content."\n";
-    print STDERR "\n";
-  } 
+  }
   return $return_string;
 }
 
@@ -113,8 +107,6 @@ sub delete_track_hub{
 
   my $self = shift;
   my $track_hub_id = shift;
-
-  my $ua = LWP::UserAgent->new;
 
   my $auth_token = eval { $self->{auth_token} };
 
@@ -126,6 +118,7 @@ sub delete_track_hub{
   my $request = GET($url);
   $request->headers->header(user => $self->{username});
   $request->headers->header(auth_token => $auth_token);
+
   my $response = $ua->request($request);
   my $response_code= $response->code;
 
@@ -167,8 +160,7 @@ sub registry_login {
   
   defined $server and defined $user and defined $pass
     or die "Some required parameters are missing when trying to login in the Track Hub Registry\n";
-  
-  my $ua = LWP::UserAgent->new;
+
   my $endpoint = '/api/login';
   my $url = $server.$endpoint; 
 
@@ -199,7 +191,6 @@ sub give_all_Registered_track_hub_names{
 
   my $auth_token = $self->{auth_token};#eval { registry_login($registry_user_name, $registry_pwd) };
 
-  my $ua = LWP::UserAgent->new;
   my $request = GET("$server/api/trackhub");
   $request->headers->header(user => $registry_user_name);
   $request->headers->header(auth_token => $auth_token);
@@ -249,8 +240,7 @@ sub get_Registry_hub_last_update {
   my $registry_pwd = $self->{pwd};
 
   my $auth_token = $self->{auth_token};
-
-  my $ua = LWP::UserAgent->new;  
+ 
   my $request = GET("$server/api/trackhub/$name");
   $request->headers->header(user       => $registry_user_name);
   $request->headers->header(auth_token => $auth_token);
@@ -325,7 +315,6 @@ sub give_all_bioreps_of_study_from_Registry {
   
   my $auth_token = $self->{auth_token};
 
-  my $ua = LWP::UserAgent->new;
   my $request = GET("$server/api/trackhub/$name");
   $request->headers->header(user       => $registry_user_name);
   $request->headers->header(auth_token => $auth_token);
@@ -409,8 +398,7 @@ sub registry_logout {
   my ($server, $user, $auth_token) = @_;
   defined $server and defined $user and defined $auth_token
     or die "Some required parameters are missing when trying to log out from the Track Hub Registry\n";
-  
-  my $ua = LWP::UserAgent->new;
+
   my $request = GET("$server/api/logout");
   $request->headers->header(user => $user);
   $request->headers->header(auth_token => $auth_token);

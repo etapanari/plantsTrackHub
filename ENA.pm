@@ -10,7 +10,7 @@ use utf8;
 my $ua = LWP::UserAgent->new;
 my $parser = XML::LibXML->new;
 
-sub get_ENA_study_title{  # there is also another way to get the title. using the warehouse call. check both and see which one is faster
+sub get_ENA_study_title{  
 
   my $study_id = shift; 
   my $study_title;
@@ -28,11 +28,17 @@ sub get_ENA_study_title{  # there is also another way to get the title. using th
     return 0;
   }
 
-
   my $doc = $parser->parse_string($response_string);
+
+  if ($doc =~/display type is either not supported or entry is not found/){
+    return "not yet in ENA";
+  }
 
   my @nodes = $doc->findnodes("//STUDY_TITLE");
 
+  if(!$nodes[0]){
+    print STDERR "I could not get a node from the xml doc of STUDY_TITLE for study id $study_id\n";
+  }
   $study_title = $nodes[0]->firstChild->data; #it's always 1 node
   utf8::encode($study_title);
   return $study_title;
@@ -70,6 +76,11 @@ sub get_ENA_title { # it works for sample, run and experiment ids
 
   }
 }
+# I call the endpoint (of the ENA sample metadata stored in $url) and get this type of response:
+#accession	altitude	bio_material	broker_name	cell_line	cell_type	center_name	checklist	col_scientific_name	col_tax_id	collected_by	collection_date	country	cultivar	culture_collection	depth	description	dev_stage	ecotype	elevation	environment_biome	environment_feature	environment_material	environmental_package	environmental_sample	experimental_factor	first_public	germline	host	host_body_site	host_genotype	host_gravidity	host_growth_conditions	host_phenotype	host_sex	host_status	host_tax_id	identified_by	investigation_type	isolate	isolation_source	location	mating_type	ph	project_name	protocol_label	salinity	sample_alias	sample_collection	sampling_campaign	sampling_platform	sampling_site	scientific_name	secondary_sample_accession	sequencing_method	serotype	serovar	sex	specimen_voucher	strain	sub_species	sub_strain	submitted_host_sex	submitted_sex	target_gene	tax_id	temperature	tissue_lib	tissue_type	variety
+#SAMEA1711073						The Genome Analysis Centre										INF1-C								N		2012-07-13	N																				RW_S9_barley					Hordeum vulgare subsp. vulgare	ERS155504												112509				
+
+#url call -> http://www.ebi.ac.uk/ena/data/warehouse/search?query=%22accession=SAMEA1711073%22&result=sample&display=report&fields=accession,altitude,bio_material,broker_name,cell_line,cell_type,center_name,checklist,col_scientific_name,col_tax_id,collected_by,collection_date,country,cultivar,culture_collection,depth,description,dev_stage,ecotype,elevation,environment_biome,environment_feature,environment_material,environmental_package,environmental_sample,experimental_factor,first_public,germline,host,host_body_site,host_genotype,host_gravidity,host_growth_conditions,host_phenotype,host_sex,host_status,host_tax_id,identified_by,investigation_type,isolate,isolation_source,location,mating_type,ph,project_name,protocol_label,salinity,sample_alias,sample_collection,sampling_campaign,sampling_platform,sampling_site,scientific_name,secondary_sample_accession,sequencing_method,serotype,serovar,sex,specimen_voucher,strain,sub_species,sub_strain,submitted_host_sex,submitted_sex,target_gene,tax_id,temperature,tissue_lib,tissue_type,variety
 
 sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a hash ref if successful, or 0 if not successful -- this is very slow!!!
 
@@ -78,7 +89,7 @@ sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a has
 
   my %metadata_key_value_pairs;
 
-  my $url = ENA::create_url_for_call_sample_metadata($sample_id,$meta_keys);
+  my $url = create_url_for_call_sample_metadata($sample_id,$meta_keys);
 
   my $response = $ua->get($url); 
   my $response_string;
@@ -90,14 +101,12 @@ sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a has
     return 0;
   }
 
-  my $response_code= $response->code;
-
   my @lines = split(/\n/, $response_string);
   my $metadata_keys_line =  $lines[0];
   my $metadata_values_line =  $lines[1];
 
 
-  if($response_code != 200 or $response_string =~ /^ *$/ or (!$metadata_values_line) or (!$metadata_keys_line ) ){ 
+  if($response->code != 200 or $response_string =~ /^ *$/ or (!$metadata_values_line) or (!$metadata_keys_line ) ){ 
 
     print "Couldn't get metadata for $url with the first attempt, retrying..\n" ;
 
@@ -108,9 +117,8 @@ sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a has
       print $i .".Retrying attempt: Retrying after 5s...\n";
       sleep 5;
       $response = $ua->get($url);
-      $response_code= $response->code;
 
-      if($response_code == 200){
+      if($response->code == 200){
 
         $response_string = $response->decoded_content;
         @lines = split(/\n/, $response_string);
@@ -151,9 +159,18 @@ sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a has
     $index++;
 
   }
-  return \%metadata_key_value_pairs ;
+  return \%metadata_key_value_pairs ; # hash with key -> metadata_key , value-> metadata_value
 
 }
+
+
+#content of the returned array:
+
+#accession,altitude,bio_material,broker_name,cell_line,cell_type,center_name,checklist,col_scientific_name,col_tax_id,collected_by,collection_date,country,cultivar,culture_collection,depth,
+#description,dev_stage,ecotype,elevation,environment_biome,environment_feature,environment_material,environmental_package,environmental_sample,experimental_factor,first_public,germline,host,host_body_site,host_genotype,
+#host_gravidity,host_growth_conditions,host_phenotype,host_sex,host_status,host_tax_id,identified_by,investigation_type,isolate,isolation_source,location,mating_type,ph,project_name,protocol_label,
+#salinity,sample_alias,sample_collection,sampling_campaign,sampling_platform,sampling_site,scientific_name,secondary_sample_accession,sequencing_method,serotype,serovar,sex,specimen_voucher,strain,sub_species,sub_strain,
+#submitted_host_sex,submitted_sex,target_gene,tax_id,temperature,tissue_lib,tissue_type,variety[
 
 sub get_all_sample_keys{
 
@@ -165,11 +182,9 @@ sub get_all_sample_keys{
 
   my $response_string = $response->decoded_content;
 
-  my $response_code= $response->code;
- 
   my @keys;
 
-  if($response_code != 200 or $response_string =~ /^ *$/ ){
+  if($response->code != 200 or $response_string =~ /^ *$/ ){
 
     print "Couldn't get sample metadata keys using $url with the first attempt, retrying..\n" ;
 
@@ -182,9 +197,9 @@ sub get_all_sample_keys{
 
       my $response_string = $response->decoded_content;
 
-      $response_code= $response->code;
+      $response->code= $response->code;
 
-      if($response_code == 200){
+      if($response->code == 200){
 
         $response_string = $response->decoded_content;
         @keys = split(/\n/, $response_string);
@@ -214,10 +229,19 @@ sub get_all_sample_keys{
 
 }
 
+# it makes this url, given the table ref with the keys:
+
+#http://www.ebi.ac.uk/ena/data/warehouse/search?query=%22accession=SAMPLE_id%22&result=sample&display=report&fields=accession,altitude,bio_material,broker_name,cell_line,cell_type,center_name,checklist,col_scientific_name,
+#col_tax_id,collected_by,collection_date,country,cultivar,culture_collection,depth,description,dev_stage,ecotype,elevation,environment_biome,environment_feature,environment_material,environmental_package,environmental_sample,
+#experimental_factor,first_public,germline,host,host_body_site,host_genotype,host_gravidity,host_growth_conditions,host_phenotype,host_sex,host_status,host_tax_id,identified_by,investigation_type,isolate,isolation_source,location,
+#mating_type,ph,project_name,protocol_label,salinity,sample_alias,sample_collection,sampling_campaign,sampling_platform,sampling_site,scientific_name,secondary_sample_accession,sequencing_method,serotype,serovar,sex,
+#specimen_voucher,strain,sub_species,sub_strain,submitted_host_sex,submitted_sex,target_gene,tax_id,temperature,tissue_lib,tissue_type,variety
+
 sub create_url_for_call_sample_metadata { # i am calling this method for a sample id
 
   my $sample_id = shift;
   my $table_ref= shift;
+
   my @key_values = @{$table_ref};
 
   my $url = "http://www.ebi.ac.uk/ena/data/warehouse/search?query=\%22accession=$sample_id\%22&result=sample&display=report&fields=";

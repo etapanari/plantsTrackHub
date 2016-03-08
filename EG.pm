@@ -9,7 +9,18 @@ use JsonResponse;
 
 my $ens_genomes_plants_call = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
 
-my @array_response_plants_assemblies = @{JsonResponse::get_Json_response($ens_genomes_plants_call)};  
+my @array_response_plants_assemblies; 
+
+my $json_response = JsonResponse::get_Json_response($ens_genomes_plants_call);  
+
+if(!$json_response){ # if response is 0
+
+  die "Could not get Ensembl plant names from EG rest call: $ens_genomes_plants_call\n";
+
+}else{
+
+  @array_response_plants_assemblies = @{$json_response};
+}
 
 # response:
 #[{"base_count":"479985347","is_reference":null,"division":"EnsemblPlants","has_peptide_compara":"1","dbname":"physcomitrella_patens_core_28_81_11","genebuild":"2011-03-JGI","assembly_level":"scaffold","serotype":null,

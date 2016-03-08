@@ -2,22 +2,26 @@ package AEStudy;
 
 use strict;
 use warnings;
+
 use Date::Manip;
 use EG;
 use ArrayExpress;
 
 ## this is a class of an AE study. It considers only PLANT species.
+# AE REST call: plantain:3000/json/70/getRunsByStudy/SRP068911
 
 sub new {
 
   my $class = shift;
   my $study_id = shift;
+  my $plant_names_response_href = shift;
 
   my $self = {
     study_id => $study_id,
+    plant_names => $plant_names_response_href
   };
 
-  my $run_tuple_of_study_ref =  make_runs_tuple_plants_of_study($study_id);
+  my $run_tuple_of_study_ref =  make_runs_tuple_plants_of_study($study_id,$plant_names_response_href);
   $self->{run_tuple} = $run_tuple_of_study_ref;
 
   return bless $self, $class; #this is what makes a reference into an object
@@ -26,18 +30,22 @@ sub new {
 sub make_runs_tuple_plants_of_study {  
 
   my $study_id = shift;
+  my $plant_names_response_href = shift; # ArrayExpress::get_plant_names_AE_API();
+
+  if(!$study_id ){
+    print "THERE IS NO STUDY ID WHEN CALLING THE METHOD make_runs_tuple_plants_of_study from AEStudy.pm\n";
+  }
   my %run_tuple; # to be returned
 
-  my $plant_names_response = ArrayExpress::get_plant_names_AE_API();
   my %plant_names_AE;
 
-  if ($plant_names_response ==0){
+  if ($plant_names_response_href ==0){
 
     die "Could not get plant names from AE REST call /getOrganisms/plants in AEStudy module\n";
 
   }else{
 
-    %plant_names_AE = %{$plant_names_response};  # gives all distinct plant names with processed runs by ENA
+    %plant_names_AE = %{$plant_names_response_href};  # gives all distinct plant names with processed runs by AE
   }
 
   my $runs_response = ArrayExpress::get_runs_json_for_study($study_id);
@@ -65,7 +73,7 @@ sub make_runs_tuple_plants_of_study {
 
   foreach my $run_stanza (@runs_json){
     
-    if($run_stanza->{"STATUS"} eq "Complete" and $plant_names_AE{$run_stanza->{"ORGANISM"}}){
+    if($run_stanza->{"STATUS"} eq "Complete" and $plant_names_AE{$run_stanza->{"REFERENCE_ORGANISM"}}){
 
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"sample_ids"}=$run_stanza->{"SAMPLE_IDS"}; # ie $run{"SRR1042754"}{"sample_ids"}="SAMN02434874,SAMN02434875"
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"organism"}=$run_stanza->{"REFERENCE_ORGANISM"};

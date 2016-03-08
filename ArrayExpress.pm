@@ -14,9 +14,9 @@ sub get_plant_names_AE_API {  # returns reference to a hash
   my %plant_names;
 
 #response:
-#[{"ORGANISM":"arabidopsis_thaliana"},{"ORGANISM":"brassica_rapa"},{"ORGANISM":"hordeum_vulgare"},{"ORGANISM":"hordeum_vulgare_subsp._vulgare"},
-#{"ORGANISM":"medicago_truncatula"},{"ORGANISM":"oryza_sativa"},{"ORGANISM":"oryza_sativa_japonica_group"},{"ORGANISM":"physcomitrella_patens"},
-#{"ORGANISM":"populus_trichocarpa"},{"ORGANISM":"sorghum_bicolor"},{"ORGANISM":"triticum_aestivum"},{"ORGANISM":"vitis_vinifera"},{"ORGANISM":"zea_mays"}]
+#[{"ORGANISM":"aegilops_tauschii","REFERENCE_ORGANISM":"aegilops_tauschii"},{"ORGANISM":"amborella_trichopoda","REFERENCE_ORGANISM":"amborella_trichopoda"},
+#{"ORGANISM":"arabidopsis_kamchatica","REFERENCE_ORGANISM":"arabidopsis_lyrata"},{"ORGANISM":"arabidopsis_lyrata","REFERENCE_ORGANISM":"arabidopsis_lyrata"},
+#{"ORGANISM":"arabidopsis_lyrata_subsp._lyrata","REFERENCE_ORGANISM":"arabidopsis_lyrata"},{"ORGANISM":"arabidopsis_thaliana","REFERENCE_ORGANISM":"arabidopsis_thaliana"},
 
   my $json_response = JsonResponse::get_Json_response($url); 
   
@@ -26,10 +26,10 @@ sub get_plant_names_AE_API {  # returns reference to a hash
 
   }else{
 
-    my @plant_names_json = @{$json_response};
+    my @plant_names_json = @{$json_response}; # json response is a ref to an array that has hash refs
 
     foreach my $hash_ref (@plant_names_json){
-      $plant_names{ $hash_ref->{"ORGANISM"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://plantain:3000/json/70/getOrganisms/plants        
+      $plant_names{ $hash_ref->{"REFERENCE_ORGANISM"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://plantain:3000/json/70/getOrganisms/plants        
     }
 
     return \%plant_names;
@@ -40,7 +40,7 @@ sub get_plant_names_AE_API {  # returns reference to a hash
 sub get_runs_json_for_study { # returns json string or 0 if url not valid
   
   my $study_id = shift;
-  my $url = $array_express_url . "/getRunsByStudy/$study_id";
+  my $url = $array_express_url . "/getRunsByStudy/$study_id";  # get an error here , $study_id is empty
 
   return JsonResponse::get_Json_response( $url);
 
@@ -48,20 +48,20 @@ sub get_runs_json_for_study { # returns json string or 0 if url not valid
 
 sub get_completed_study_ids_for_plants{ # I want this method to return only studies with status "Complete"
 
-  my $plant_names_href = shift;
+  my $plant_names_href_EG = shift;
 
   my $url;
   my %study_ids;
   my $get_runs_by_organism_endpoint="http://plantain:3000/json/70/getRunsByOrganism/"; # gets all the bioreps by organism to date that AE has processed so far
 
-  foreach my $plant_name (keys %{$plant_names_href}){
+  foreach my $plant_name (keys %{$plant_names_href_EG}){
 
     $url = $get_runs_by_organism_endpoint . $plant_name;
     my $json_response = JsonResponse::get_Json_response( $url);
 
     if(!$json_response){ # if response is 0
 
-      return 0 and die "Json response unsuccessful for plant $plant_name\n";
+      die "Json response unsuccessful for plant $plant_name\n";
 
     }else{
       my @biorep_stanza_json = @{$json_response};

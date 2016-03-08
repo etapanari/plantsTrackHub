@@ -39,15 +39,19 @@ sub make_track_hub{ # main method, creates the track hub of a study in the folde
   my $self= shift;
   my $study_id= $self->{study_id};
   my $server_dir_full_path = $self->{server_dir_full_path};
+  my $plant_names_response_href = shift;
 
-  my $study_obj = AEStudy->new($study_id);
+  my $study_obj = AEStudy->new($study_id,$plant_names_response_href);
 
   make_study_dir($server_dir_full_path, $study_obj);
 
   make_assemblies_dirs($server_dir_full_path, $study_obj) ;  
   
-  make_hubtxt_file($server_dir_full_path , $study_obj);
+  my $return = make_hubtxt_file($server_dir_full_path , $study_obj);
 
+  if($return eq "not yet in ENA"){
+    return "..Study $study_id is not yet in ENA\n";
+  }
   make_genomestxt_file($server_dir_full_path , $study_obj);  
 
   my %assembly_names = %{$study_obj->get_assembly_names}; 
@@ -111,6 +115,10 @@ sub make_hubtxt_file{
   print $fh "shortLabel "."RNA-Seq alignment hub ".$study_id."\n"; 
   
   my $ena_study_title= ENA::get_ENA_study_title($study_id);
+
+  if ($ena_study_title eq "not yet in ENA"){
+    return "not yet in ENA";
+  }
   my $long_label;
 
   if (!$ena_study_title) {
@@ -124,6 +132,8 @@ sub make_hubtxt_file{
     print $fh "email tapanari\@ebi.ac.uk\n";
 
   }
+
+  return "ok";
 }
 
 sub make_genomestxt_file{
@@ -244,7 +254,7 @@ sub make_biosample_super_track_obj{
 
   }else{
     $long_label = "<a href=\"http://www.ebi.ac.uk/ena/data/view/".$sample_id."\">".$sample_id."</a>";
-    print STDERR "\nCould not get sample title from ENA API for sample $sample_id\n";
+    print STDERR "Could not get sample title from ENA API for sample $sample_id\n\n";
 
   }
   utf8::encode($long_label);  
@@ -291,9 +301,11 @@ sub make_biosample_sub_track_obj{
   my $long_label_ENA;
   my $ena_title = get_ENA_biorep_title($study_obj,$biorep_id);
 
+  my $study_id=$study_obj->id;
+
   if($biorep_id!~/biorep/){
-    if(!$ena_title){
-       print STDERR "biorep id $biorep_id was not found to have a title in ENA\n";
+    if(!$ena_title){ # if return is 0
+       print STDERR "Biorep id $biorep_id of study id $study_id was not found to have a title in ENA\n\n";
        $long_label_ENA = "<a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>\n" ;
 
     }else{
@@ -307,7 +319,7 @@ sub make_biosample_sub_track_obj{
     } 
  
     if(!$ena_title){
-      print STDERR "first run of biorep id $biorep_id was not found to have a title in ENA\n";
+      print STDERR "first run of biorep id $biorep_id of study id $study_id was not found to have a title in ENA\n\n";
       # i want the link to be like: http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/E-GEOD-55482.bioreps.txt      
       $long_label_ENA = "<a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$1.".bioreps.txt"."\">".$biorep_id."</a>\n" ;
 

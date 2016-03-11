@@ -52,7 +52,7 @@ my $start_run = time();
       or die "I cannot make dir $server_dir_full_path in script: ".__FILE__." line: ".__LINE__."\n";
   }
 
-  my ($studies_not_yet_in_ena_aref, $skipped_studies_due_to_registry_issues_aref);
+  my ($studies_not_yet_in_ena_aref, $skipped_studies_due_to_registry_issues_aref) = ([] , []);
 
   my $plant_names_AE_response_href = ArrayExpress::get_plant_names_AE_API();
 
@@ -121,12 +121,11 @@ my $start_run = time();
         }
       }
     }  
-
     
     my %common_studies_to_be_updated = %{get_study_ids_to_update_th($common_study_ids_aref, $registry_obj,$plant_names_AE_response_href)};
 
     if(scalar (keys %common_studies_to_be_updated) == 0){
-      print "No common studies between current AE API and registered studies in the THR are found to need updating\n";
+      print "\n\nNo common studies between current AE API and registered studies in the THR are found to need updating\n";
     }else{
       print "\nUpdated studies (".scalar (keys %common_studies_to_be_updated)." studies) from last time the pipeline was run:\n";
     }
@@ -192,7 +191,6 @@ my $start_run = time();
     
   }
 
-
   print_run_duration_so_far($start_time);
   ## after the pipeline finishes running, I print some log info:
   my ($study_id_biorep_ids_AE_currently_href , $plant_study_id_AE_currently_number_of_bioreps_href) = give_hashes_with_AE_current_stats($study_ids_href_AE,$plant_names_AE_response_href);
@@ -201,6 +199,10 @@ my $start_run = time();
   print_registered_TH_in_THR_stats_after_pipeline_is_run($registry_obj,$studies_not_yet_in_ena_aref, $skipped_studies_due_to_registry_issues_aref ,$plant_names_AE_response_href);
   print_run_duration_so_far($start_time);
   
+  my $date_string_end = localtime();
+  print " Finished running the pipeline on:\n";
+  print "Local date,time: $date_string_end\n";
+
 }
 
 
@@ -374,10 +376,6 @@ sub print_current_AE_studies_stats{
   print "In total there are " .scalar (keys %{$plant_study_id_AE_currently_number_of_bioreps_href})." Ensembl plants done to date.\n\n";
   print "####################################################################################\n\n";
 
-  my $date_string_end = localtime();
-  print " Finished running the pipeline on:\n";
-  print "Local date,time: $date_string_end\n";
-
   my $total_disc_space_of_track_hubs = `du -sh $server_dir_full_path`;
   
   print "\nTotal disc space occupied in $server_dir_full_path is:\n $total_disc_space_of_track_hubs\n";
@@ -407,7 +405,7 @@ sub print_registered_TH_in_THR_stats_after_pipeline_is_run{
 
 
   if (scalar @$studies_not_yet_in_ena_aref > 0){
-    print "These studies were ready by Array Express but not yet in ENA , so no trak hubs were able to be created out of those, since the metadata needed for the track hubs are taken from ENA: ".scalar @$studies_not_yet_in_ena_aref." in total\n";
+    print "These studies were ready by Array Express but not yet in ENA , so no trak hubs were able to be created out of those, since the metadata needed for the track hubs are taken from ENA: ".scalar @$studies_not_yet_in_ena_aref." in total\n\n";
     my $count_unready_studies=0;
     foreach my $study_id (@$studies_not_yet_in_ena_aref){
       $count_unready_studies++;
@@ -419,7 +417,7 @@ sub print_registered_TH_in_THR_stats_after_pipeline_is_run{
 
 
   if (scalar @$skipped_studies_due_to_registry_issues_aref > 0){
-    print "\nThese studies were not able to be registered in the Track Hub Registry , hence skipped (removed from the ftp server too): ".scalar @$skipped_studies_due_to_registry_issues_aref .scalar @$skipped_studies_due_to_registry_issues_aref ." in total\n";
+    print "\nThese studies were not able to be registered in the Track Hub Registry , hence skipped (removed from the ftp server too): ".scalar @$skipped_studies_due_to_registry_issues_aref .scalar @$skipped_studies_due_to_registry_issues_aref ." in total\n\n";
     my $count_skipped_studies=0;
     foreach my $study_id (@$skipped_studies_due_to_registry_issues_aref){
       $count_skipped_studies++;
@@ -514,10 +512,10 @@ sub run_pipeline_from_scratch_with_logging{
   }
 
   my $date_string2 = localtime();
-  print " \n Finished creating the files,directories of the track hubs on the server on:\n";
+  print " \n Finished creating the files,directories of the THs on the server and registering all THs in the THR on:\n";
   print "Local date,time: $date_string2\n";
 
-  print "\n***********************************\n\n";
+  print "\n***********************************\n";
   $| = 1; 
   return (\@studies_not_yet_in_ena,\@skipped_studies_due_to_registry_issues); 
 }

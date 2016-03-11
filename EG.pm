@@ -7,7 +7,9 @@ use warnings;
 
 use JsonResponse;
 
-my $ens_genomes_plants_call = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
+#my $ens_genomes_plants_call = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
+
+my $ens_genomes_plants_call = "http://test.rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json";
 
 my @array_response_plants_assemblies; 
 
@@ -37,10 +39,12 @@ my %asmbId_asmbName;
 my %plant_names;
 my %species_name_assembly_id_hash;
 
+
 foreach my $hash_ref (@array_response_plants_assemblies){
 
   $asmbNames  {$hash_ref->{"assembly_name"}} = 1;
   $plant_names{$hash_ref->{"species"}} =1 ;
+
 
   if(! $hash_ref->{"assembly_id"}){# for the 2 species without assembly id , I store 0000, this is specifically for the THR to work
 
@@ -53,8 +57,10 @@ foreach my $hash_ref (@array_response_plants_assemblies){
   next if(!$hash_ref->{"assembly_id"}); # 2 species don't have assembly ids now (Feb 2016) : triticum_aestivum and oryza_rufipogon 
 
   $asmbId_asmbName{$hash_ref->{"assembly_id"} } = $hash_ref->{"assembly_name"}; 
+
   
 }
+
 
 sub get_plant_names{
 
@@ -69,7 +75,7 @@ sub get_right_assembly_name{  # this method returns the right assembly name in t
   my $assembly_string = shift;
   my $assembly_name=$assembly_string;
 
-  if (!$asmbNames{$assembly_string}){ # if my assembl string is not assembly name (but assembly id), then I have to change it into assembly name
+  if (!$asmbNames{$assembly_string}){ # if my assembly string is not assembly name (but assembly id), then I have to change it into assembly name
 
     if($asmbId_asmbName{$assembly_string}) {  # solanum_tuberosum has a wrong assembly.default it's neither the assembly.name nor the assembly.accession BUT should be : "assembly_name":"SolTub_3.0" and "assembly_id":"GCA_000226075.1"
 

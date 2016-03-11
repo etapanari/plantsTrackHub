@@ -114,14 +114,14 @@ sub make_hubtxt_file{
 
   print $fh "shortLabel "."RNA-Seq alignment hub ".$study_id."\n"; 
   
-  my $ena_study_title= ENA::get_ENA_study_title($study_id);
+  my $ena_study_title = ENA::get_ENA_study_title($study_id);
 
   if ($ena_study_title eq "not yet in ENA"){
     return "not yet in ENA";
   }
   my $long_label;
 
-  if (!$ena_study_title) {
+  if ($ena_study_title eq "Study title was not find in ENA") { 
     print STDERR "I cannot get study title for $study_id from ENA\n";
     $long_label = $long_label = "longLabel <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study_id."\">".$study_id."</a>"."\n";
   }else{
@@ -182,6 +182,9 @@ sub make_trackDbtxt_file{
 
     foreach my $biorep_id (keys %{$study_obj->get_biorep_ids_from_sample_id($sample_id)}){
     
+      if(!(make_biosample_sub_track_obj($study_obj,$biorep_id,$sample_id))){ # this is in case there is a run id from AE that is not yet in ENA, then I want to skip doing this track, this method returns 0 if this is the case
+        next;
+      }
       my $track_obj=make_biosample_sub_track_obj($study_obj,$biorep_id,$sample_id);
       $track_obj->print_track_stanza($fh);
 
@@ -291,28 +294,36 @@ sub make_biosample_super_track_obj{
 }
 
 sub make_biosample_sub_track_obj{ 
-# i need 5 pieces of data to make the track obj :  track_name, parent_name, big_data_url , long_label ,file_type
+# i need 5 pieces of data to make the track obj, to return:  track_name, parent_name, big_data_url , long_label ,file_type
 
   my $study_obj = shift;
   my $biorep_id = shift; #track name
   my $parent_id = shift;
 
   my $big_data_url = $study_obj->get_big_data_file_location_from_biorep_id($biorep_id);
+  my $short_label_ENA;
   my $long_label_ENA;
   my $ena_title = get_ENA_biorep_title($study_obj,$biorep_id);
 
   my $study_id=$study_obj->id;
 
   if($biorep_id!~/biorep/){
+    $short_label_ENA = "ENA Run:$biorep_id";
+
     if(!$ena_title){ # if return is 0
        print STDERR "Biorep id $biorep_id of study id $study_id was not found to have a title in ENA\n\n";
        $long_label_ENA = "<a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>\n" ;
 
+    }elsif($ena_title eq "not yet in ENA"){
+       print STDERR "Biorep id $biorep_id of study id $study_id is not yet in ENA, this track will not be written in the trackDb.txt file of the TH\n\n";
+       return 0;
     }else{
        $long_label_ENA = $ena_title." ; <a href=\"http://www.ebi.ac.uk/ena/data/view/".$biorep_id."\">".$biorep_id."</a>"."\n" ;
     }
 
-  }else{ # run id would be "E-MTAB-2037.biorep4"       
+  }else{ # run id would be "E-MTAB-2037.biorep4"     
+  
+    $short_label_ENA = "ArrayExpress:$biorep_id";
     my $biorep_accession; 
     if($biorep_id=~/(.+)\.biorep.*/){
       $biorep_accession = $1;
@@ -331,7 +342,7 @@ sub make_biosample_sub_track_obj{
 
   my $file_type =$study_obj->give_big_data_file_type_of_biorep_id($biorep_id);
 
-  my $track_obj = SubTrack->new($biorep_id,$parent_id,$big_data_url,$long_label_ENA,$file_type);
+  my $track_obj = SubTrack->new($biorep_id,$parent_id,$big_data_url,$short_label_ENA,$long_label_ENA,$file_type);
   return $track_obj;
 
 }

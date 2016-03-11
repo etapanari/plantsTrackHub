@@ -12,6 +12,7 @@ sub new {
   my $track_name = shift;
   my $parent_name = shift;
   my $big_data_url = shift;
+  my $short_label= shift;
   my $long_label= shift;
   my $type = shift;
 
@@ -19,6 +20,7 @@ sub new {
     track_name => $track_name,
     parent_name => $parent_name,
     big_data_url => $big_data_url,
+    short_label => $short_label,
     long_label => $long_label,
     file_type => $type
   };
@@ -40,7 +42,7 @@ sub print_track_stanza{
   print $fh "	track ". $self->{track_name}."\n"; 
   print $fh "	parent ". $self->{parent_name}."\n"; 
   print $fh "	bigDataUrl ".$self->{big_data_url}."\n"; 
-  print $fh "	shortLabel BioRep:".$self->{track_name}."\n";
+  print $fh "	shortLabel ".$self->{short_label}."\n";
   print $fh "	longLabel ".$self->{long_label};
   print $fh "	type ".$self->{file_type}."\n";
   print $fh "\n";

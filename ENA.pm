@@ -28,16 +28,17 @@ sub get_ENA_study_title{
     return 0;
   }
 
-  my $doc = $parser->parse_string($response_string);
+  my $doc_obj = $parser->parse_string($response_string);
 
-  if ($doc =~/display type is either not supported or entry is not found/){
+  if ($doc_obj =~/display type is either not supported or entry is not found/ or $doc_obj !~/\/STUDY_LINK/){
     return "not yet in ENA";
   }
 
-  my @nodes = $doc->findnodes("//STUDY_TITLE");
+  my @nodes = $doc_obj->findnodes("//STUDY_TITLE");
 
   if(!$nodes[0]){
     print STDERR "I could not get a node from the xml doc of STUDY_TITLE for study id $study_id\n";
+    return "Study title was not find in ENA";
   }
   $study_title = $nodes[0]->firstChild->data; #it's always 1 node
   utf8::encode($study_title);
@@ -47,10 +48,10 @@ sub get_ENA_study_title{
 
 sub get_ENA_title { # it works for sample, run and experiment ids
 
-  my $sample_id = shift ;
-  my $sample_title ;
+  my $id = shift ;
+  my $title ;
 
-  my $url ="http://www.ebi.ac.uk/ena/data/view/$sample_id&display=xml";
+  my $url ="http://www.ebi.ac.uk/ena/data/view/$id&display=xml";
 
   my $response = $ua->get($url); 
   my $response_string;
@@ -63,16 +64,20 @@ sub get_ENA_title { # it works for sample, run and experiment ids
   }
   my $doc = $parser->parse_string($response_string);
 
-  if(!$doc->findnodes("//TITLE")){
+  if ($doc =~/display type is either not supported or entry is not found/){
+    return "not yet in ENA";
+  }
+
+  elsif(!$doc->findnodes("//TITLE")){
     return 0;   
   }else{
 
     my @nodes = $doc->findnodes("//TITLE");
   
-    $sample_title = $nodes[0]->firstChild->data; #it's always 1 node
-    utf8::encode($sample_title);
+    $title = $nodes[0]->firstChild->data; #it's always 1 node
+    utf8::encode($title);
 
-    return $sample_title;
+    return $title;
 
   }
 }

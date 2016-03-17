@@ -60,7 +60,7 @@ sub register_track_hub{
   my $request = 
     POST($url,'Content-type' => 'application/json',
 	 #  assemblies => { "$assembly_name" => "$assembly_accession" } }));
-    'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies }));
+    'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies  }));#, public => 0 }));
   $request->headers->header(user => $username);
   $request->headers->header(auth_token => $auth_token);
 
@@ -74,7 +74,7 @@ sub register_track_hub{
 
   }else{ 
 
-    $return_string= "\tCouldn't register track hub with the first attempt: " .$track_hub_id."\t".$assembly_name_accession_pairs."\t".$response->code."\t" .$response->content."\n";
+    $return_string= "Couldn't register track hub with the first attempt: " .$track_hub_id."\t".$assembly_name_accession_pairs."\t".$response->code."\t" .$response->content."\n";
 
     my $flag_success=0;
 

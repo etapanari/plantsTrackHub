@@ -13,7 +13,7 @@ sub run_system_command {
     
     return 0 ;
 
-  }else{
+  }else{ # success
 
     return 1;
   }

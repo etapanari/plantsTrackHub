@@ -40,6 +40,7 @@ sub print_track_stanza{
   print $fh "shortLabel BioSample:".$self->{track_name}."\n";
   print $fh "longLabel ".$self->{long_label}."\n";
   print $fh "metadata ".$self->{metadata}."\n";
+  print $fh "type cram\n";
   print $fh "\n";
 
 }

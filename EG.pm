@@ -9,6 +9,7 @@ use JsonResponse;
 
 #my $ens_genomes_plants_call = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
 
+#test server - new assemblies:
 my $ens_genomes_plants_call = "http://test.rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json";
 
 my @array_response_plants_assemblies; 

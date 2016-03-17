@@ -96,24 +96,16 @@ sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a has
 
   my $url = create_url_for_call_sample_metadata($sample_id,$meta_keys);
 
-  my $response = $ua->get($url); 
   my $response_string;
+  my @lines;
+  my $metadata_keys_line;
+  my $metadata_values_line;
 
-  if ($response->is_success) {
-    $response_string = $response->decoded_content;  
-  }
-  else {
-    return 0;
-  }
+  my $response = $ua->get($url); 
 
-  my @lines = split(/\n/, $response_string);
-  my $metadata_keys_line =  $lines[0];
-  my $metadata_values_line =  $lines[1];
+  if($response->code != 200 ){
 
-
-  if($response->code != 200 or $response_string =~ /^ *$/ or (!$metadata_values_line) or (!$metadata_keys_line ) ){ 
-
-    print "Couldn't get metadata for $url with the first attempt, retrying..\n" ;
+    print "Couldn't get metadata for $url \nwith the first attempt, retrying..\n" ;
 
     my $flag_success=0;
 
@@ -123,26 +115,42 @@ sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a has
       sleep 5;
       $response = $ua->get($url);
 
-      if($response->code == 200){
+      if($response->is_success){
 
         $response_string = $response->decoded_content;
         @lines = split(/\n/, $response_string);
-        $metadata_keys_line =  $lines[0];
-        $metadata_values_line =  $lines[1];
+        if($lines[0]) {
+          $metadata_keys_line =  $lines[0];
+        }
+        if($lines[1]){
+          $metadata_values_line =  $lines[1];
+        }
 
         $flag_success =1 ;
-        print "Got metadata after all!\n";
         last;
       }
 
     }
 
-    if($flag_success ==0 or $response_string =~ /^ *$/){  # if after the 10 attempts I still don't get the metadata..
-     
-      print STDERR "Didn't find metadata for url $url"."\t".$response->code."\n\n";
+    if($flag_success ==0 or $response_string =~ /^ *$/ or (!$metadata_values_line) or (!$metadata_keys_line) ){  # if after the 10 attempts I still don't get the metadata..
       return 0;
     }
+    print "Got metadata after all!\n";
+  }
 
+  $response_string = $response->decoded_content;
+  @lines = split(/\n/, $response_string);
+  if($lines[0]) {
+    $metadata_keys_line =  $lines[0];
+  }else{
+
+    return 0;
+  }
+  if($lines[1]){
+    $metadata_values_line =  $lines[1];
+  }else{
+
+    return 0;
   }
   
   my @metadata_keys = split(/\t/, $metadata_keys_line);

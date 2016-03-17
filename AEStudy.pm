@@ -71,6 +71,10 @@ sub make_runs_tuple_plants_of_study {
 #"STATUS":"Complete","ASSEMBLY_USED":"V1.0","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:53:48","LAST_PROCESSED_DATE":"Mon Jan 25 2016 16:46:04",
 #"FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/aggregated_techreps/E-MTAB-4045/E-MTAB-4045.biorep54.cram","MAPPING_QUALITY":77},
 
+# there are cases of null sample ids: (I want to skip those track hubs)
+#[{"STUDY_ID":"DRP002805","SAMPLE_IDS":null,"BIOREP_ID":"DRR048597","RUN_IDS":"DRR048597","ORGANISM":"brachypodium_distachyon","REFERENCE_ORGANISM":"brachypodium_distachyon","STATUS":"Complete",
+#"ASSEMBLY_USED":"v1.0","ENA_LAST_UPDATED":"Fri Mar 11 2016 01:37:14","LAST_PROCESSED_DATE":"Sat Mar 12 2016 22:48:54","FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/DRR048/DRR048597/DRR048597.cram","MAPPING_QUALITY":88},
+
   foreach my $run_stanza (@runs_json){
     
     if($run_stanza->{"STATUS"} eq "Complete" and $plant_names_AE{$run_stanza->{"REFERENCE_ORGANISM"}}){
@@ -139,8 +143,11 @@ sub get_sample_ids{
 
   foreach my $biorep_id (keys %biorep_ids){
    
-    my $sample_ids_string = $run_tuple->{$biorep_id} {"sample_ids"};
-    my @sample_ids_from_string = split (/,/ , $sample_ids_string);
+    my $sample_ids_string = $run_tuple->{$biorep_id} {"sample_ids"};  # ie $run{"SRR1042754"}{"sample_ids"}="SAMN02434874,SAMN02434875" , could also be $run{"SRR1042754"}{"sample_ids"}= null
+    if(!$sample_ids_string ){
+      return 0;
+    }
+    my @sample_ids_from_string = split (/,/ , $sample_ids_string); 
 
     foreach my $sample_id (@sample_ids_from_string){
       $sample_ids{$sample_id} = 1;

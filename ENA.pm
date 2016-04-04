@@ -199,7 +199,7 @@ sub get_all_sample_keys{
 
   if($response->code != 200 or $response_string =~ /^ *$/ ){
 
-    print "Couldn't get sample metadata keys using $url with the first attempt, retrying..\n" ;
+    print "\nCouldn't get sample metadata keys using $url with the first attempt, retrying..\n" ;
 
     my $flag_success = 0 ;
     for(my $i=1; $i<=10; $i++) {

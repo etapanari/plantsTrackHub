@@ -60,7 +60,7 @@ sub register_track_hub{
   my $request = 
     POST($url,'Content-type' => 'application/json',
 	 #  assemblies => { "$assembly_name" => "$assembly_accession" } }));
-    'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies  }));#, public => 0 }));
+    'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies , public => 0 }));
   $request->headers->header(user => $username);
   $request->headers->header(auth_token => $auth_token);
 
@@ -110,43 +110,36 @@ sub delete_track_hub{
 
   my $auth_token = eval { $self->{auth_token} };
 
-  my @trackhubs;
+  my %trackhubs;
   my $url = $server . '/api/trackhub';
 
-  $url .= "/$track_hub_id" if $track_hub_id ne 'all';
-
-  my $request = GET($url);
-  $request->headers->header(user => $self->{username});
-  $request->headers->header(auth_token => $auth_token);
-
-  my $response = $ua->request($request);
-  my $response_code= $response->code;
-
-  if($response_code == 200) {
-    if ($track_hub_id eq 'all') {
-      map { push @trackhubs, $_ } @{from_json($response->content)};
-    } else {
-      push @trackhubs, from_json($response->content);
-    }
-  } else { 
-    printf STDERR "Couldn't get trackhub(s) %s from the Registry: response code " . $response->code . " and response content ".$response->content . " in script " .__FILE__. " line " .__LINE__."\n", ($track_hub_id ne 'all')?$track_hub_id:'';
+  if ($track_hub_id eq "all"){
+    %trackhubs= give_all_Registered_track_hub_names();
+    
+  }else{
+    $trackhubs{$track_hub_id} = 1;
   }
 
   my $counter_of_deleted=0;
 
-  foreach my $track_hub (@trackhubs) {
+  foreach my $track_hub (keys %trackhubs) {
 
     $counter_of_deleted++;
-    print "$counter_of_deleted.\tDeleting trackhub ". $track_hub->{name}."\t";
-    $request = DELETE("$url/" . $track_hub->{name});
+    if($track_hub_id eq "all"){
+      print "$counter_of_deleted";
+    }
+    print "\tDeleting trackhub ". $track_hub."\t";
+    my $request = DELETE("$url/" . $track_hub);
+
     $request->headers->header(user => $self->{username});
     $request->headers->header(auth_token => $auth_token);
     my $response = $ua->request($request);
     my $response_code= $response->code;
+
     if ($response->code != 200) {
       $counter_of_deleted--;
       print "..Error- couldn't be deleted - check STDERR.\n";
-      printf STDERR "\n\tCouldn't delete track hub from THR : " . $track_hub->{name} . " with assemblies " . join(", ", map { $_->{assembly} } @{$track_hub->{trackdbs}}) . "\t"." response code ".$response->code . " and response content ".$response->content." in script " .__FILE__. " line " .__LINE__."\n";
+      printf STDERR "\n\tCouldn't delete track hub from THR : " . $track_hub . " with response code ".$response->code . " and response content ".$response->content." in script " .__FILE__. " line " .__LINE__."\n";
     } else {
       print "..Done\n";
     }
@@ -251,7 +244,7 @@ sub get_Registry_hub_last_update {
     $hub = from_json($response->content);
   } else {  
 
-    print "\tCouldn't get Registered track hubs with the first attempt when calling method get_Registry_hub_last_update in script ".__FILE__."\n";
+    print "\tCouldn't get Registered track hub $name with the first attempt when calling method get_Registry_hub_last_update in script ".__FILE__."\n";
     my $flag_success=0;
 
     for(my $i=1; $i<=10; $i++) {
@@ -266,7 +259,7 @@ sub get_Registry_hub_last_update {
       }
     }
 
-    die "Couldn't get list of track hubs in the Registry when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__."\n"
+    die "Couldn't get track hub $name in the Registry when calling method get_Registry_hub_last_update in script: ".__FILE__." line ".__LINE__." I am getting code ".$response->code."\n"
     unless $flag_success==1;
   }
 

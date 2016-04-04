@@ -39,7 +39,7 @@ sub make_runs_tuple_plants_of_study {
 
   my %plant_names_AE;
 
-  if ($plant_names_response_href ==0){
+  if (!$plant_names_response_href){
 
     die "Could not get plant names from AE REST call /getOrganisms/plants in AEStudy module\n";
 

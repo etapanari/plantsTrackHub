@@ -79,7 +79,7 @@ sub run_system_command {
 sub make_study_dir{
 
   my ($server_dir_full_path,$study_obj) = @_;
-  my $study_id = $study_obj->id;  # getting an error here
+  my $study_id = $study_obj->id;  
 
   run_system_command("mkdir $server_dir_full_path" . '/' . $study_id)
     or die "I cannot make dir $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";

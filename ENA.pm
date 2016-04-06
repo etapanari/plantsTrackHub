@@ -87,7 +87,7 @@ sub get_ENA_title { # it works for sample, run and experiment ids
 
 #url call -> http://www.ebi.ac.uk/ena/data/warehouse/search?query=%22accession=SAMEA1711073%22&result=sample&display=report&fields=accession,altitude,bio_material,broker_name,cell_line,cell_type,center_name,checklist,col_scientific_name,col_tax_id,collected_by,collection_date,country,cultivar,culture_collection,depth,description,dev_stage,ecotype,elevation,environment_biome,environment_feature,environment_material,environmental_package,environmental_sample,experimental_factor,first_public,germline,host,host_body_site,host_genotype,host_gravidity,host_growth_conditions,host_phenotype,host_sex,host_status,host_tax_id,identified_by,investigation_type,isolate,isolation_source,location,mating_type,ph,project_name,protocol_label,salinity,sample_alias,sample_collection,sampling_campaign,sampling_platform,sampling_site,scientific_name,secondary_sample_accession,sequencing_method,serotype,serovar,sex,specimen_voucher,strain,sub_species,sub_strain,submitted_host_sex,submitted_sex,target_gene,tax_id,temperature,tissue_lib,tissue_type,variety
 
-sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a hash ref if successful, or 0 if not successful -- this is very slow!!!
+sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a hash ref if successful, or 0 if not successful -- this is slow
 
   my $sample_id =  shift;
   my $meta_keys = shift; 

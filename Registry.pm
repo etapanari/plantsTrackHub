@@ -60,7 +60,7 @@ sub register_track_hub{
   my $request = 
     POST($url,'Content-type' => 'application/json',
 	 #  assemblies => { "$assembly_name" => "$assembly_accession" } }));
-    'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies , public => 0 }));
+    'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies }));#, public => 0 }));
   $request->headers->header(user => $username);
   $request->headers->header(auth_token => $auth_token);
 
@@ -224,7 +224,7 @@ sub give_all_Registered_track_hub_names{
 
 }
 
-sub get_Registry_hub_last_update {
+sub get_Registry_hub_last_update { # gives the last update date of the registration of the track hub
 
   my $self = shift;
   my $name = shift;  # track hub name, ie study_id

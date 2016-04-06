@@ -13,12 +13,12 @@ use SubTrack;
 use SuperTrack;
 use Helper;
 
+my $meta_keys_aref = ENA::get_all_sample_keys();
 
 sub new {
 
   my $class = shift;
   my $study_id  = shift; 
-  my $meta_keys_arref = shift ;
   my $server_dir_full_path = shift;
   
   defined $study_id and defined $server_dir_full_path
@@ -26,7 +26,6 @@ sub new {
 
   my $self = {
     study_id  => $study_id ,
-    meta_keys => $meta_keys_arref,
     server_dir_full_path => $server_dir_full_path
   };
 
@@ -265,8 +264,7 @@ sub make_biosample_super_track_obj{
   my $metadata_string="hub_created_date=".printlabel_value($date_string);
     
   # returns a has ref or 0 if unsuccessful
-  my $meta_keys_arref = $self->{meta_keys};
-  my $metadata_respose = ENA::get_sample_metadata_response_from_ENA_warehouse_rest_call( $sample_id,$meta_keys_arref);  
+  my $metadata_respose = ENA::get_sample_metadata_response_from_ENA_warehouse_rest_call( $sample_id,$meta_keys_aref);  
   if ($metadata_respose==0){
     print STDERR "No metadata values found for sample $sample_id\n";
 

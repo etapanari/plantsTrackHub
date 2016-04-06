@@ -1,9 +1,9 @@
 # example run:
-# perl make_track_hub_and_register_it.pl -THR_username testing -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/thr_testing -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/thr_testing -file_location_of_study_ids_or_species ./file_with_ids -file_content_study_ids
+# perl make_and_register_track_hubs.pl -THR_username testing -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/thr_testing -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/thr_testing -file_location_of_study_ids_or_species ./file_with_ids -file_content_study_ids
 
 # or 
 
-# perl make_track_hub_and_register_it.pl -THR_username testing -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/thr_testing -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/thr_testing -file_location_of_study_ids_or_species ./file_with_ids -file_content_species_names
+# perl make_and_register_track_hubs.pl -THR_username testing -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/thr_testing -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/thr_testing -file_location_of_study_ids_or_species ./file_with_ids -file_content_species_names
 
 use strict ;
 use warnings;
@@ -162,13 +162,16 @@ sub make_register_THs_with_logging{
 
     my $ls_output = `ls $server_dir_full_path`  ;
     if($ls_output =~/$study_id/){ # i check if the directory of the study exists already
-
+   
+      print " (update) "; # if it already exists
       my $method_return= Helper::run_system_command("rm -r $server_dir_full_path/$study_id");
       if (!$method_return){ # returns 1 if successfully deleted or 0 if not, !($method_return is like $method_return=0)
         print STDERR "I cannot rm dir $server_dir_full_path/$study_id in script: ".__FILE__." line: ".__LINE__."\n";
         print STDERR "This study $study_id will be skipped";
         next;
       }
+    }else{
+      print " (new) ";
     }
 
     my $track_hub_creator_obj = TrackHubCreation->new($study_id,$server_dir_full_path);

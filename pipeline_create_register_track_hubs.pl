@@ -65,17 +65,15 @@ my $start_run = time();
 
   my $organism_assmblAccession_EG_href = EG::get_species_name_assembly_id_hash(); #$hash{"brachypodium_distachyon"} = "GCA_000005505.1"         also:  $hash{"oryza_rufipogon"} = "0000"
   
-  my $meta_keys_aref = ENA::get_all_sample_keys();
-
   if ($from_scratch){
 
-    ($studies_not_yet_in_ena_aref,$skipped_studies_due_to_registry_issues_aref,$skipped_studies_due_to_missing_samples_in_AE_API_aref) = run_pipeline_from_scratch_with_logging($registry_obj, $study_ids_href_AE , $server_dir_full_path, $organism_assmblAccession_EG_href,$meta_keys_aref,$plant_names_AE_response_href ,$studies_not_yet_in_ena_aref, $skipped_studies_due_to_registry_issues_aref, $skipped_studies_due_to_missing_samples_in_AE_API_aref,); 
+    ($studies_not_yet_in_ena_aref,$skipped_studies_due_to_registry_issues_aref,$skipped_studies_due_to_missing_samples_in_AE_API_aref) = run_pipeline_from_scratch_with_logging($registry_obj, $study_ids_href_AE , $server_dir_full_path, $organism_assmblAccession_EG_href, $plant_names_AE_response_href ,$studies_not_yet_in_ena_aref, $skipped_studies_due_to_registry_issues_aref, $skipped_studies_due_to_missing_samples_in_AE_API_aref,); 
 
   }
   else {  # incremental update
 
     print_registered_TH_in_THR_stats_before_update_pipeline_is_run($registry_obj,$plant_names_AE_response_href);
-    ($studies_not_yet_in_ena_aref,$skipped_studies_due_to_registry_issues_aref,$skipped_studies_due_to_missing_samples_in_AE_API_aref) = run_pipeline_with_incremental_update_with_logging($study_ids_href_AE,$registry_obj,$server_dir_full_path,$plant_names_AE_response_href ,$organism_assmblAccession_EG_href ,$meta_keys_aref,$studies_not_yet_in_ena_aref, $skipped_studies_due_to_registry_issues_aref, $skipped_studies_due_to_missing_samples_in_AE_API_aref);
+    ($studies_not_yet_in_ena_aref,$skipped_studies_due_to_registry_issues_aref,$skipped_studies_due_to_missing_samples_in_AE_API_aref) = run_pipeline_with_incremental_update_with_logging($study_ids_href_AE,$registry_obj,$server_dir_full_path,$plant_names_AE_response_href ,$organism_assmblAccession_EG_href , $studies_not_yet_in_ena_aref, $skipped_studies_due_to_registry_issues_aref, $skipped_studies_due_to_missing_samples_in_AE_API_aref);
   }
 
   print_run_duration_so_far($start_time);
@@ -126,7 +124,6 @@ sub run_pipeline_with_incremental_update_with_logging{
   my $server_dir_full_path = shift;
   my $plant_names_AE_response_href = shift;
   my $organism_assmblAccession_EG_href = shift;
-  my $meta_keys_aref = shift;
 
   my $studies_not_yet_in_ena_aref = shift;
   my $skipped_studies_due_to_registry_issues_aref = shift;
@@ -148,9 +145,9 @@ sub run_pipeline_with_incremental_update_with_logging{
     print "\nNew studies (".scalar (@$new_study_ids_aref) ." studies) from last time the pipeline was run:\n\n";
   }
 
-  ($studies_not_yet_in_ena_aref,$skipped_studies_due_to_registry_issues_aref,$skipped_studies_due_to_missing_samples_in_AE_API_aref)= create_new_studies_in_incremental_update($new_study_ids_aref,$server_dir_full_path ,$plant_names_AE_response_href,$registry_obj,$organism_assmblAccession_EG_href ,$meta_keys_aref ,$studies_not_yet_in_ena_aref, $skipped_studies_due_to_registry_issues_aref, $skipped_studies_due_to_missing_samples_in_AE_API_aref); 
+  ($studies_not_yet_in_ena_aref,$skipped_studies_due_to_registry_issues_aref,$skipped_studies_due_to_missing_samples_in_AE_API_aref)= create_new_studies_in_incremental_update($new_study_ids_aref,$server_dir_full_path ,$plant_names_AE_response_href,$registry_obj,$organism_assmblAccession_EG_href , $studies_not_yet_in_ena_aref, $skipped_studies_due_to_registry_issues_aref, $skipped_studies_due_to_missing_samples_in_AE_API_aref); 
 
-  ($studies_not_yet_in_ena_aref,$skipped_studies_due_to_registry_issues_aref,$skipped_studies_due_to_missing_samples_in_AE_API_aref)= update_common_studies($common_study_ids_aref,$registry_obj,$plant_names_AE_response_href,$server_dir_full_path ,$organism_assmblAccession_EG_href,$meta_keys_aref,$studies_not_yet_in_ena_aref,$skipped_studies_due_to_registry_issues_aref,$skipped_studies_due_to_missing_samples_in_AE_API_aref);
+  ($studies_not_yet_in_ena_aref,$skipped_studies_due_to_registry_issues_aref,$skipped_studies_due_to_missing_samples_in_AE_API_aref)= update_common_studies($common_study_ids_aref,$registry_obj,$plant_names_AE_response_href,$server_dir_full_path ,$organism_assmblAccession_EG_href,$studies_not_yet_in_ena_aref,$skipped_studies_due_to_registry_issues_aref,$skipped_studies_due_to_missing_samples_in_AE_API_aref);
 
   return ($studies_not_yet_in_ena_aref,$skipped_studies_due_to_registry_issues_aref,$skipped_studies_due_to_missing_samples_in_AE_API_aref); 
 }
@@ -163,7 +160,6 @@ sub update_common_studies{
   my $plant_names_AE_response_href = shift;
   my $server_dir_full_path = shift;
   my $organism_assmblAccession_EG_href = shift;
-  my $meta_keys_aref  =  shift;
 
   my $studies_not_yet_in_ena_aref = shift ;
   my $skipped_studies_due_to_registry_issues_aref = shift;
@@ -209,7 +205,7 @@ sub update_common_studies{
     }
     
     my $date_registry_last = localtime($registry_obj->get_Registry_hub_last_update($study_id))->strftime('%F %T');
-    ($unsuccessfull_study_href,$study_counter) = make_and_register_track_hub($study_obj,$registry_obj,$old_study_counter, $server_dir_full_path,$organism_assmblAccession_EG_href ,$meta_keys_aref ,$plant_names_AE_response_href); 
+    ($unsuccessfull_study_href,$study_counter) = make_and_register_track_hub($study_obj,$registry_obj,$old_study_counter, $server_dir_full_path,$organism_assmblAccession_EG_href ,$plant_names_AE_response_href); 
 #######
     print "\t..Because: ";
     if($info_array[0] eq "diff_time_only"){
@@ -260,7 +256,6 @@ sub create_new_studies_in_incremental_update{
   my $plant_names_AE_response_href = shift;
   my $registry_obj = shift;
   my $organism_assmblAccession_EG_href = shift;
-  my $meta_keys_aref = shift;
 
   my $studies_not_yet_in_ena_aref = shift ;
   my $skipped_studies_due_to_registry_issues_aref =shift;
@@ -294,7 +289,7 @@ sub create_new_studies_in_incremental_update{
     my $old_study_counter = $study_counter;
 
     my $unsuccessfull_study_href;
-    ($unsuccessfull_study_href,$study_counter) = make_and_register_track_hub($study_obj,$registry_obj,$old_study_counter, $server_dir_full_path,$organism_assmblAccession_EG_href,$meta_keys_aref,$plant_names_AE_response_href ); 
+    ($unsuccessfull_study_href,$study_counter) = make_and_register_track_hub($study_obj,$registry_obj,$old_study_counter, $server_dir_full_path,$organism_assmblAccession_EG_href, $plant_names_AE_response_href ); 
 
     if ($unsuccessfull_study_href->{"not yet in ENA"}){  # hash is like this: $unsuccessful_study{"not yet in ENA"}{$study_id}= 1;
 
@@ -602,7 +597,6 @@ sub run_pipeline_from_scratch_with_logging{
   my $study_ids_href_AE = shift; # all the study ids that currently the AE API returns for plants.
   my $server_dir_full_path = shift;
   my $organism_assmblAccession_EG_href = shift;
-  my $meta_keys_aref = shift ;
   my $plant_names_AE_response_href = shift;
 
   my $studies_not_yet_in_ena_aref =shift;
@@ -629,7 +623,7 @@ sub run_pipeline_from_scratch_with_logging{
     my $old_study_counter = $study_counter;
 
     my $unsuccessfull_study_href;
-    ($unsuccessfull_study_href, $study_counter)= make_and_register_track_hub($study_obj ,$registry_obj ,$old_study_counter, $server_dir_full_path,$organism_assmblAccession_EG_href,$meta_keys_aref,$plant_names_AE_response_href);
+    ($unsuccessfull_study_href, $study_counter)= make_and_register_track_hub($study_obj ,$registry_obj ,$old_study_counter, $server_dir_full_path,$organism_assmblAccession_EG_href, $plant_names_AE_response_href);
     # method make_and_register_track_hub returns the $study_counter reduced by 1 if the TH creation and registration is unsuccessful
 
     if ($unsuccessfull_study_href->{"not yet in ENA"}){
@@ -779,7 +773,6 @@ sub make_and_register_track_hub{
   my $line_counter = shift;
   my $server_dir_full_path = shift;
   my $organism_assmblAccession_EG_href = shift;
-  my $meta_keys_aref = shift ;
   my $plant_names_AE_response_href = shift;
 
   my $return_string;
@@ -787,7 +780,7 @@ sub make_and_register_track_hub{
   my $study_id = $study_obj->id;
   print "$line_counter.\tcreating track hub for study $study_id\t"; 
 
-  my $track_hub_creator_obj = TrackHubCreation->new($study_id,$meta_keys_aref,$server_dir_full_path);
+  my $track_hub_creator_obj = TrackHubCreation->new($study_id,$server_dir_full_path);
   my $script_output = $track_hub_creator_obj->make_track_hub($plant_names_AE_response_href);
 
   print $script_output;

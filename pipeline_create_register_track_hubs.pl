@@ -1,7 +1,7 @@
 # example run:
 
-# perl pipeline_create_register_track_hubs.pl -THR_username etapanari -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/ena_warehouse_meta/testing -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/ena_warehouse_meta/testing  1> output_wh_23Feb 2>errors_wh_23Feb
-# perl pipeline_create_register_track_hubs.pl -THR_username etapanari -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/ena_warehouse_meta/testing -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/ena_warehouse_meta/testing -do_track_hubs_from_scratch 1> output_fs_wh_16Feb 2>errors_fs_wh_16Feb
+# perl pipeline_create_register_track_hubs.pl -THR_username etapanari -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/Track_Hubs -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/Track_Hubs  1> output_wh_23Feb 2>errors_wh_23Feb
+# perl pipeline_create_register_track_hubs.pl -THR_username etapanari -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/Track_Hubs -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/Track_Hubs -do_track_hubs_from_scratch 1> output_fs_wh_16Feb 2>errors_fs_wh_16Feb
 
 # third Registry account for testing: username: tapanari2 , password : testing2
 

@@ -1,9 +1,9 @@
 # example run:
-# perl make_and_register_track_hubs.pl -THR_username testing -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/thr_testing -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/thr_testing -file_location_of_study_ids_or_species ./file_with_ids -file_content_study_ids
+# perl make_and_register_track_hubs.pl -THR_username testing -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/Track_Hubs -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/Track_Hubs -file_location_of_study_ids_or_species ./file_with_ids -file_content_study_ids
 
 # or 
 
-# perl make_and_register_track_hubs.pl -THR_username testing -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/.TrackHubs/thr_testing -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/.TrackHubs/thr_testing -file_location_of_study_ids_or_species ./file_with_ids -file_content_species_names
+# perl make_and_register_track_hubs.pl -THR_username testing -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/Track_Hubs-server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/Track_Hubs -file_location_of_study_ids_or_species ./file_with_ids -file_content_species_names
 
 use strict ;
 use warnings;

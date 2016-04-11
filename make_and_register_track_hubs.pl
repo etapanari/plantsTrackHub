@@ -33,7 +33,7 @@ GetOptions(
   "file_location_of_study_ids_or_species=s" => \$file_location_of_study_ids_or_species,
   "file_content_species_names"  => \$species_file_content,  # flag
   "file_content_study_ids"  => \$study_ids_file_content  # flag
-  #"track_hub_id=s" => \$study_id
+
 );
 
 if(!$species_file_content and !$study_ids_file_content){
@@ -192,7 +192,8 @@ sub make_register_THs_with_logging{
       $line_counter --;
       $unsuccessful_studies{"not yet in ENA"} {$study_id}= 1;
 
-    }else{  # if the study is successfully created in the ftp server, I go ahead and register it
+     }
+     else{  # if the study is successfully created in the ftp server, I go ahead and register it
 
       my $output = register_track_hub_in_TH_registry($registry_obj,$study_obj,$organism_assmblAccession_EG_href );  
 
@@ -210,7 +211,7 @@ sub make_register_THs_with_logging{
       print $return_string;
       
     }
-  }
+ }
   return (\%unsuccessful_studies);
 
 }

@@ -15,6 +15,7 @@ sub new {
   my $short_label= shift;
   my $long_label= shift;
   my $type = shift;
+  my $visibility = shift;
 
   my $self = {
     track_name => $track_name,
@@ -22,7 +23,8 @@ sub new {
     big_data_url => $big_data_url,
     short_label => $short_label,
     long_label => $long_label,
-    file_type => $type
+    file_type => $type ,
+    visibility => $visibility
   };
 
   return bless $self, $class; # this is what makes a reference into an object
@@ -45,6 +47,11 @@ sub print_track_stanza{
   print $fh "	shortLabel ".$self->{short_label}."\n";
   print $fh "	longLabel ".$self->{long_label};
   print $fh "	type ".$self->{file_type}."\n";
+  if($self->{visibility} eq "on"){
+    print $fh "	visibility pack\n";
+  }else{
+    print $fh "	visibility hide\n";
+  }
   print $fh "\n";
 
 }

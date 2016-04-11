@@ -60,7 +60,7 @@ sub register_track_hub{
   my $request = 
     POST($url,'Content-type' => 'application/json',
 	 #  assemblies => { "$assembly_name" => "$assembly_accession" } }));
-    'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies }));#, public => 0 }));
+    'Content' => to_json({ url => $trackHub_txt_file_url, type => 'transcriptomics', assemblies => $assemblies , public => 0 }));
   $request->headers->header(user => $username);
   $request->headers->header(auth_token => $auth_token);
 
@@ -114,7 +114,7 @@ sub delete_track_hub{
   my $url = $server . '/api/trackhub';
 
   if ($track_hub_id eq "all"){
-    %trackhubs= give_all_Registered_track_hub_names();
+    %trackhubs= %{$self->give_all_Registered_track_hub_names()};
     
   }else{
     $trackhubs{$track_hub_id} = 1;
@@ -152,7 +152,7 @@ sub registry_login {
   my $pass = shift;
   
   defined $server and defined $user and defined $pass
-    or die "Some required parameters are missing when trying to login in the Track Hub Registry\n";
+    or die "Some required parameters are missing when trying to login in the TrackHub Registry\n";
 
   my $endpoint = '/api/login';
   my $url = $server.$endpoint; 
@@ -182,7 +182,8 @@ sub give_all_Registered_track_hub_names{
   my $registry_pwd = $self->{pwd};
   my %track_hub_names;
 
-  my $auth_token = $self->{auth_token};#eval { registry_login($registry_user_name, $registry_pwd) };
+  my $auth_token = eval { $self->{auth_token} };
+ # my $auth_token = $self->{auth_token};#eval { registry_login($registry_user_name, $registry_pwd) };
 
   my $request = GET("$server/api/trackhub");
   $request->headers->header(user => $registry_user_name);
@@ -197,7 +198,7 @@ sub give_all_Registered_track_hub_names{
 
   }else{
 
-    print "\tCouldn't get Registered track hubs with the first attempt when calling method give_all_Registered_track_hubs in script ".__FILE__."\n";
+    print "\tCouldn't get Registered track hubs with the first attempt when calling method give_all_Registered_track_hub_names in script ".__FILE__."\n";
     print "Got error ".$response->code ." , ". $response->content."\n";
     my $flag_success=0;
 
@@ -214,7 +215,7 @@ sub give_all_Registered_track_hub_names{
       }
     }
 
-    die "Couldn't get list of track hubs in the Registry when calling method give_all_Registered_track_hubs in script: ".__FILE__." line ".__LINE__."\n"
+    die "Couldn't get list of track hubs in the Registry when calling method give_all_Registered_track_hub_names in script: ".__FILE__." line ".__LINE__."\n"
     unless $flag_success ==1;
   }
 

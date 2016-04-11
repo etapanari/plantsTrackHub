@@ -167,6 +167,8 @@ sub get_sample_metadata_response_from_ENA_warehouse_rest_call {  # returns a has
       if($metadata_key=~/date/ and $metadata_values [$index]=~/(\d+)-\d+-\d+\/\d+-\d+-\d+/){ # i do this as an exception because I had dates like this:  collection_date=2014-01-01/2014-12-31, I want to do it collection_date=2014
          $metadata_values [$index] = $1;
       }
+      utf8::encode($metadata_key);
+      utf8::encode($metadata_values [$index]);
       $metadata_key_value_pairs{$metadata_key} = $metadata_values [$index];
     }
     $index++;

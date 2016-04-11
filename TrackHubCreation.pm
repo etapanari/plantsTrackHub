@@ -121,14 +121,16 @@ sub make_hubtxt_file{
   my $long_label;
 
   if ($ena_study_title eq "Study title was not find in ENA") { 
+
     print STDERR "I cannot get study title for $study_id from ENA\n";
-    $long_label = $long_label = "longLabel <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study_id."\">".$study_id."</a>"."\n";
+    $long_label = "longLabel <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study_id."\">".$study_id."</a>"."\n";
+
   }else{
+
     $long_label = "longLabel $ena_study_title ; <a href=\"http://www.ebi.ac.uk/ena/data/view/".$study_id."\">".$study_id."</a>"."\n";
-    utf8::encode($long_label) ; # i do this as from ENA there are some funny data like library names in the long label of the study and perl thinks it's non-ASCii character, while they are not.
     print $fh $long_label;
     print $fh "genomesFile genomes.txt\n";
-    print $fh "email tapanari\@ebi.ac.uk\n";
+    print $fh "email helpdesk\@ensemblgenomes.org\n";
 
   }
 
@@ -174,17 +176,28 @@ sub make_trackDbtxt_file{
   if(scalar @sample_ids ==0){
     print STDERR "No samples found for study $study_id\n"; 
   }
+
+  my $counter_of_tracks=0;
+  
   foreach my $sample_id ( @sample_ids ) { 
 
     my $super_track_obj = $self->make_biosample_super_track_obj($sample_id);
     $super_track_obj->print_track_stanza($fh);
+
+    my $visibility="off";
 
     foreach my $biorep_id (keys %{$study_obj->get_biorep_ids_from_sample_id($sample_id)}){
     
       if(!(make_biosample_sub_track_obj($study_obj,$biorep_id,$sample_id))){ # this is in case there is a run id from AE that is not yet in ENA, then I want to skip doing this track, this method returns 0 if this is the case
         next;
       }
-      my $track_obj=make_biosample_sub_track_obj($study_obj,$biorep_id,$sample_id);
+      $counter_of_tracks++;
+      if ($counter_of_tracks <=10){
+        $visibility = "on";
+      }else{
+        $visibility = "off";
+      }
+      my $track_obj=make_biosample_sub_track_obj($study_obj,$biorep_id,$sample_id,$visibility);
       $track_obj->print_track_stanza($fh);
 
     } 
@@ -259,7 +272,7 @@ sub make_biosample_super_track_obj{
     print STDERR "Could not get sample title from ENA API for sample $sample_id\n\n";
 
   }
-  utf8::encode($long_label);  
+
   my $date_string = strftime "%a %b %e %H:%M:%S %Y %Z", gmtime;  # date is of this type: "Tue Feb  2 17:57:14 2016 GMT"
   my $metadata_string="hub_created_date=".printlabel_value($date_string);
     
@@ -272,11 +285,10 @@ sub make_biosample_super_track_obj{
     my %metadata_pairs = %{$metadata_respose};
     my @meta_pairs;
 
-    foreach my $meta_key (keys %metadata_pairs) {  # printing the sample metadata 
-
-      utf8::encode($meta_key) ;
+    foreach my $meta_key (keys %metadata_pairs) {  # printing the sample metadata
+ 
       my $meta_value = $metadata_pairs{$meta_key} ;
-      utf8::encode($meta_value) ;
+
       # if the date of the metadata has the months in this format jun-Jun-June then I have to convert it to 06 as the Registry complains
       if($meta_key =~/date/ and $meta_value =~/[(a-z)|(A-Z)]/){ 
         $meta_value = TransformDate->change_date($meta_value);
@@ -297,6 +309,7 @@ sub make_biosample_sub_track_obj{
   my $study_obj = shift;
   my $biorep_id = shift; #track name
   my $parent_id = shift;
+  my $visibility= shift;
 
   my $big_data_url = $study_obj->get_big_data_file_location_from_biorep_id($biorep_id);
   my $short_label_ENA;
@@ -336,11 +349,10 @@ sub make_biosample_sub_track_obj{
         $long_label_ENA = $ena_title.";<a href=\"http://www.ebi.ac.uk/arrayexpress/experiments/E-GEOD-55482/samples/?full=truehttp://www.ebi.ac.uk/~rpetry/bbrswcapital/".$biorep_accession.".bioreps.txt"."\">".$biorep_id."</a>"."\n" ;
       }
   }
-  utf8::encode($long_label_ENA);
 
   my $file_type =$study_obj->give_big_data_file_type_of_biorep_id($biorep_id);
 
-  my $track_obj = SubTrack->new($biorep_id,$parent_id,$big_data_url,$short_label_ENA,$long_label_ENA,$file_type);
+  my $track_obj = SubTrack->new($biorep_id,$parent_id,$big_data_url,$short_label_ENA,$long_label_ENA,$file_type,$visibility);
   return $track_obj;
 
 }

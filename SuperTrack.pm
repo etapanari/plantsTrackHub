@@ -17,7 +17,6 @@ sub new {
     track_name => $track_name,
     long_label => $long_label,
     metadata => $metadata
-
   };
 
   return bless $self, $class; # this is what makes a reference into an object
@@ -36,11 +35,13 @@ sub print_track_stanza{
   my $fh = shift;
 
   print $fh "track ". $self->{track_name}."\n"; 
-  print $fh "superTrack on show\n";
+  print $fh "superTrack on\n";
   print $fh "shortLabel BioSample:".$self->{track_name}."\n";
   print $fh "longLabel ".$self->{long_label}."\n";
   print $fh "metadata ".$self->{metadata}."\n";
   print $fh "type cram\n";
+
+
   print $fh "\n";
 
 }

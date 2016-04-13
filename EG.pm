@@ -7,10 +7,10 @@ use warnings;
 
 use JsonResponse;
 
-#my $ens_genomes_plants_call = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
+my $ens_genomes_plants_call = "http://rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json"; # to get all ensembl plants names currently
 
 #test server - new assemblies:
-my $ens_genomes_plants_call = "http://test.rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json";
+#my $ens_genomes_plants_call = "http://test.rest.ensemblgenomes.org/info/genomes/division/EnsemblPlants?content-type=application/json";
 
 my @array_response_plants_assemblies; 
 
@@ -39,6 +39,7 @@ my %asmbNames ;
 my %asmbId_asmbName;
 my %plant_names;
 my %species_name_assembly_id_hash;
+my %species_name_assembly_name_hash;
 
 
 foreach my $hash_ref (@array_response_plants_assemblies){
@@ -46,13 +47,13 @@ foreach my $hash_ref (@array_response_plants_assemblies){
   $asmbNames  {$hash_ref->{"assembly_name"}} = 1;
   $plant_names{$hash_ref->{"species"}} =1 ;
 
+  $species_name_assembly_name_hash {$hash_ref->{"species"} } =  $hash_ref->{"assembly_name"};
 
-  if(! $hash_ref->{"assembly_id"}){# for the 2 species without assembly id , I store 0000, this is specifically for the THR to work
+  if(! $hash_ref->{"assembly_id"}){# for triticum_aestivum that is without assembly id , I store 0000, this is specifically for the THR to work
 
-    $species_name_assembly_id_hash{$hash_ref->{"species"}} = "0000" ; # i make the hash with 2 keys because the assembly name is not unique: v1.0 GCA_000005505.1 brachypodium_distachyon
-                                                                                                                                                                                  # v1.0 GCA_000143415.1 selaginella_moellendorffii
+    $species_name_assembly_id_hash{$hash_ref->{"species"}} = "0000" ;
+                                                                     
   }else{
-
     $species_name_assembly_id_hash {$hash_ref->{"species"} } =  $hash_ref->{"assembly_id"};
   }
   next if(!$hash_ref->{"assembly_id"}); # 2 species don't have assembly ids now (Feb 2016) : triticum_aestivum and oryza_rufipogon 
@@ -68,30 +69,21 @@ sub get_plant_names{
   return \%plant_names;
 }
 
-#"assembly_name":"v1.0","taxonomy_id":"88036","species_id":"1","assembly_id":"GCA_000143415.1
-#"v1.0","taxonomy_id":"15368","species_id":"1","assembly_id":"GCA_000005505.1"
 
-sub get_right_assembly_name{  # this method returns the right assembly name in the cases where AE gives the assembly accession instead of the assembly name (due to our bug)
+sub get_assembly_name_using_species_name{ 
 
-  my $assembly_string = shift;
-  my $assembly_name=$assembly_string;
+  my $species_name = shift;
+  my $assembly_name = "unknown";
 
-  if (!$asmbNames{$assembly_string}){ # if my assembly string is not assembly name (but assembly id), then I have to change it into assembly name
+  if(!$species_name_assembly_name_hash{$species_name}){
 
-    if($asmbId_asmbName{$assembly_string}) {  # solanum_tuberosum has a wrong assembly.default it's neither the assembly.name nor the assembly.accession BUT should be : "assembly_name":"SolTub_3.0" and "assembly_id":"GCA_000226075.1"
+    print STDERR "The species name: $species_name is not in EG REST response ($ens_genomes_plants_call) in the species field\n";
+    return $assembly_name;
+  }else{
 
-      $assembly_name = $asmbId_asmbName{$assembly_string}; 
-    }
-
+    return $species_name_assembly_name_hash{$species_name};
   }
-
-  if($assembly_string eq "3.0"){ # this is an exception for solanum_tuberosum, its assembly name is 3.0 in AE API while it should be SolTub_3.0
-    $assembly_name = "SolTub_3.0";
-  }
-  return $assembly_name;
-  
 }
-
 
 sub get_species_name_assembly_id_hash{
 

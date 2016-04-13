@@ -81,7 +81,6 @@ sub make_runs_tuple_plants_of_study {
 
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"sample_ids"}=$run_stanza->{"SAMPLE_IDS"}; # ie $run{"SRR1042754"}{"sample_ids"}="SAMN02434874,SAMN02434875"
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"organism"}=$run_stanza->{"REFERENCE_ORGANISM"};
-      $run_tuple{$run_stanza->{"BIOREP_ID"}}{"assembly_name"}=$run_stanza->{"ASSEMBLY_USED"};  #ie "TAIR10"
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"big_data_file_server_location"}=$run_stanza->{"FTP_LOCATION"};
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"AE_processed_date"}=$run_stanza->{"LAST_PROCESSED_DATE"};
       $run_tuple{$run_stanza->{"BIOREP_ID"}}{"run_ids"}=$run_stanza->{"RUN_IDS"};
@@ -119,17 +118,17 @@ sub get_organism_names_assembly_names{
 
   my $self = shift;
   my $run_tuple = $self->{run_tuple};
-  my %organism_names;
-  my $organism_name;
+
+  my %organism_assembly_names;
 
   foreach my $biorep_id (keys %{$run_tuple}){
     
-    $organism_name = $run_tuple->{$biorep_id}{"organism"};
-    $organism_names {$organism_name} = $run_tuple->{$biorep_id}{"assembly_name"}; 
+    my $organism_name = $run_tuple->{$biorep_id}{"organism"};
+    $organism_assembly_names {$organism_name} =  EG::get_assembly_name_using_species_name($organism_name);
     
   }
 
-  return \%organism_names;
+  return \%organism_assembly_names;
 
 }
 
@@ -163,8 +162,8 @@ sub get_assembly_name_from_biorep_id{
   my $biorep_id = shift;
   my $run_tuple = $self->{run_tuple};
     
-  my $assembly_name= $run_tuple->{$biorep_id}{"assembly_name"};
-  $assembly_name = EG::get_right_assembly_name( $assembly_name);
+  my $organism_name= $run_tuple->{$biorep_id}{"organism"};
+  my $assembly_name = EG::get_assembly_name_using_species_name($organism_name);
   return $assembly_name;
 }
 
@@ -220,16 +219,14 @@ sub get_biorep_ids_from_sample_id{
 sub get_assembly_names{
 
   my $self=shift;
-  my $run_tuple = $self->{run_tuple};
 
   my %assembly_names;
+  my %organism_assembly_names = %{$self->get_organism_names_assembly_names};
 
-  foreach my $biorep_id (keys %{$run_tuple}){
-    
-    my $assembly_name = $run_tuple->{$biorep_id}{"assembly_name"};
-    $assembly_name = EG::get_right_assembly_name( $assembly_name);
+  foreach my $organism_name (keys %organism_assembly_names){
+
+    my $assembly_name = $organism_assembly_names{$organism_name};
     $assembly_names {$assembly_name} = 1;
-    
   }
 
   return \%assembly_names;

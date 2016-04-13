@@ -836,7 +836,7 @@ sub get_assembly_names_assembly_ids_string_for_study{
 
     if($organism_assmblAccession_EG_href->{$organism_name_AE}){
 
-      my $string = EG::get_right_assembly_name( $study_organism_names_AE_assembly_name{$organism_name_AE}) ."," . $organism_assmblAccession_EG_href->{$organism_name_AE};
+      my $string = $study_organism_names_AE_assembly_name{$organism_name_AE} ."," . $organism_assmblAccession_EG_href->{$organism_name_AE};
       push(@assembly_name_assembly_id_pairs , $string);
 
     }else{

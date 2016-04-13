@@ -2,7 +2,6 @@
 # perl make_and_register_track_hubs.pl -THR_username testing -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/Track_Hubs -server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/Track_Hubs -file_location_of_study_ids_or_species ./file_with_ids -file_content_study_ids
 
 # or 
-
 # perl make_and_register_track_hubs.pl -THR_username testing -THR_password testing -server_dir_full_path /nfs/ensemblgenomes/ftp/pub/misc_data/Track_Hubs-server_url ftp://ftp.ensemblgenomes.org/pub/misc_data/Track_Hubs -file_location_of_study_ids_or_species ./file_with_ids -file_content_species_names
 
 use strict ;
@@ -42,6 +41,11 @@ if(!$species_file_content and !$study_ids_file_content){
 
 my %study_ids;
 my %species_names;
+my @obsolete_studies;
+
+my $plant_names_href_EG = EG::get_plant_names;
+
+my %study_ids_from_AE = %{ArrayExpress::get_completed_study_ids_for_plants($plant_names_href_EG)};
 
 open(IN, $file_location_of_study_ids_or_species) or die "Can't open $file_location_of_study_ids_or_species.\n";
 
@@ -49,7 +53,11 @@ if($study_ids_file_content){
 
   while(<IN>){
     chomp;
-    $study_ids{$_}=1;
+    if($study_ids_from_AE{$_}){  # i have to check if this study id is still in AE , if it's not now in AE, I leave this TH the way it was without updating it. I t will be updated when I run the pipeline with the update option
+      $study_ids{$_}=1;
+    }else{
+      push(@obsolete_studies,$_);
+    }
   }
   close (IN);
 
@@ -71,8 +79,16 @@ if($study_ids_file_content){
 
     my %study_ids_of_plant = %{ArrayExpress::get_study_ids_for_plant($species_name)};
 
-    %study_ids = (%study_ids , %study_ids_of_plant);
-    
+    foreach my $study_id_of_plant (keys %study_ids_of_plant){
+
+      if($study_ids_from_AE{$study_id_of_plant}){ # i have to check if this study id is still in AE
+
+        $study_ids{$study_id_of_plant}=1;
+
+      }else{
+        push(@obsolete_studies,$study_id_of_plant);
+      }
+    }    
   }
 }
 
@@ -129,8 +145,13 @@ if($study_ids_file_content){
 
   $| = 1; 
 
+  if (scalar @obsolete_studies > 0){
+    print "\nObsolete studies list (not any more in AE):\n";
+    foreach my $obsolete_study (@obsolete_studies){
+      print $obsolete_study."\n";
+    }
+  }
 }
-
 
 
 ## METHODS ##
@@ -148,6 +169,8 @@ sub make_register_THs_with_logging{
   my %unsuccessful_studies;
 
   foreach my $study_id (keys %$study_ids_href){
+
+    print $registry_obj->delete_track_hub($study_id) ; ## ONLY FOR NOW
 
     my $study_obj = AEStudy->new($study_id,$plant_names_AE_response_href);
 
@@ -294,7 +317,7 @@ sub get_assembly_names_assembly_ids_string_for_study{
 
     if($organism_assmblAccession_EG_href->{$organism_name_AE}){
 
-      my $string = EG::get_right_assembly_name( $study_organism_names_AE_assembly_name{$organism_name_AE}) ."," . $organism_assmblAccession_EG_href->{$organism_name_AE};
+      my $string = $study_organism_names_AE_assembly_name{$organism_name_AE} ."," . $organism_assmblAccession_EG_href->{$organism_name_AE};
       push(@assembly_name_assembly_id_pairs , $string);
 
     }else{

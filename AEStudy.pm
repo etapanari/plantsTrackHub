@@ -8,7 +8,7 @@ use EG;
 use ArrayExpress;
 
 ## this is a class of an AE study. It considers only PLANT species.
-# AE REST call: plantain:3000/json/70/getRunsByStudy/SRP068911
+# AE REST call: http://www.ebi.ac.uk/fg/rnaseq/api/json/70/getRunsByStudy/SRP068911
 
 sub new {
 
@@ -60,7 +60,7 @@ sub make_runs_tuple_plants_of_study {
     @runs_json = @{$runs_response};
   }
 
-# a response stanza (the response is usually more than 1 stanza, 1 study has many bioreps, each stanza is a biorep) of this call:  http://plantain:3000/json/70/getRunsByStudy/SRP033494
+# a response stanza (the response is usually more than 1 stanza, 1 study has many bioreps, each stanza is a biorep) of this call:  http://www.ebi.ac.uk/fg/rnaseq/api/json/70/getRunsByStudy/SRP033494
 #[{"STUDY_ID":"SRP033494","SAMPLE_IDS":"SAMN02434874","BIOREP_ID":"SRR1042754","RUN_IDS":"SRR1042754","ORGANISM":"arabidopsis_thaliana","REFERENCE_ORGANISM":"arabidopsis_thaliana","STATUS":"Complete",
 #"ASSEMBLY_USED":"TAIR10","ENA_LAST_UPDATED":"Fri Jun 19 2015 18:11:03","LAST_PROCESSED_DATE":"Sun Nov 15 2015 00:31:20",
 #"FTP_LOCATION":"ftp://ftp.ebi.ac.uk/pub/databases/arrayexpress/data/atlas/rnaseq/SRR104/004/SRR1042754/SRR1042754.cram"},
@@ -279,7 +279,7 @@ sub give_big_data_file_type_of_biorep_id{
 
 }
 
-sub get_AE_last_processed_unix_date{  # of the study : i get all its bioreps and then find the max date of all bioreps # tried with this study: http://plantain:3000/json/70/getRunsByStudy/SRP067728
+sub get_AE_last_processed_unix_date{  # of the study : i get all its bioreps and then find the max date of all bioreps # tried with this study: http://www.ebi.ac.uk/fg/rnaseq/api/json/70/getRunsByStudy/SRP067728
 
   my $self= shift;
   my %biorep_ids = %{$self->get_biorep_ids};

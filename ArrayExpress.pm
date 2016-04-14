@@ -5,7 +5,9 @@ use warnings;
 
 use JsonResponse;
 
-my $array_express_url =  "http://plantain:3000/json/70";   # Robert's server where he stores his REST URLs
+#my $array_express_url =  "http://plantain:3000/json/70";   # AE private server if the REST URLs
+
+my $array_express_url =  "http://www.ebi.ac.uk/fg/rnaseq/api/json/70";   # AE public server if the REST URLs
 
 sub get_plant_names_AE_API {  # returns reference to a hash
 
@@ -29,7 +31,7 @@ sub get_plant_names_AE_API {  # returns reference to a hash
     my @plant_names_json = @{$json_response}; # json response is a ref to an array that has hash refs
 
     foreach my $hash_ref (@plant_names_json){
-      $plant_names{ $hash_ref->{"REFERENCE_ORGANISM"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://plantain:3000/json/70/getOrganisms/plants        
+      $plant_names{ $hash_ref->{"REFERENCE_ORGANISM"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://www.ebi.ac.uk/fg/rnaseq/api/json/70/getOrganisms/plants        
     }
 
     return \%plant_names;
@@ -52,7 +54,7 @@ sub get_completed_study_ids_for_plants{ # I want this method to return only stud
 
   my $url;
   my %study_ids;
-  my $get_runs_by_organism_endpoint="http://plantain:3000/json/70/getRunsByOrganism/"; # gets all the bioreps by organism to date that AE has processed so far
+  my $get_runs_by_organism_endpoint=$array_express_url."/getRunsByOrganism/"; # gets all the bioreps by organism to date that AE has processed so far
 
   foreach my $plant_name (keys %{$plant_names_href_EG}){
 
@@ -98,7 +100,7 @@ sub get_study_ids_for_plant{
 
     foreach my $hash_ref (@plant_names_json){
       if($hash_ref->{"STATUS"} eq "Complete"){
-        $study_ids{ $hash_ref->{"STUDY_ID"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://plantain:3000/json/70/getOrganisms/plants        
+        $study_ids{ $hash_ref->{"STUDY_ID"} }=1;  # this hash has all possible names of plants that Robert is using in his REST calls ; I get them from here: http://www.ebi.ac.uk/fg/rnaseq/api/json/70/getOrganisms/plants        
       }
     }
 

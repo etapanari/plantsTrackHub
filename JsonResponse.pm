@@ -10,7 +10,7 @@ my $http = HTTP::Tiny->new();
 
 sub get_Json_response { # it returns the json response given the endpoint as param, it returns an array reference that contains hash references . If response not successful it returns 0
   
-  my $url = shift; # example: "http://plantain:3000/json/70/getRunsByStudy/SRP033494";
+  my $url = shift; # example: "http://www.ebi.ac.uk/fg/rnaseq/api/json/70/getRunsByStudy/SRP033494";
 
   my $response = $http->get($url);
   my $content;
